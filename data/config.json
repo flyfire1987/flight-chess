@@ -1,0 +1,38 @@
+{
+  "meta": {
+    "name": "飞行棋",
+    "version": "1.0",
+    "boardVersion": "1.0",
+    "updatedAt": "2026-11-08"
+  },
+  "game": {
+    "playerCount": 4,
+    "diceSides": 6,
+    "piecesPerPlayer": 4,
+    "mustEnterHomeOnExactRoll": true,
+    "bounceOnOvershoot": true,
+    "capturesResetToStart": true,
+    "sixRollsAgain": true,
+    "maxConsecutiveSixes": 3,
+    "threeSixesPenalty": false,
+    "rollToEnterHomeStrip": true,
+    "aiEnabled": true,
+    "aiSpeedMs": 700,
+    "takeoffRolls": [
+      5,
+      6
+    ]
+  },
+  "bonus": {
+    "startBonusPoints": 2,
+    "capturedBonusPoints": 1,
+    "reachedHomePoints": 2,
+    "winnerBonusPoints": 3
+  },
+  "ui": {
+    "title": "飞行棋",
+    "subtitle": "4 人对战 · 掷骰飞行 · 跳跃与飞跃",
+    "accent": "#0ea5e9",
+    "soundEnabled": true
+  }
+}

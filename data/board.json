@@ -1,0 +1,474 @@
+{
+  "meta": {
+    "name": "飞行棋",
+    "version": "1.0",
+    "tileCount": 52,
+    "playerCount": 4,
+    "homeStretchLen": 6,
+    "colors": [
+      "#e23a3a",
+      "#1565c0",
+      "#fbc02d",
+      "#2e7d32"
+    ],
+    "tokens": [
+      "🔴",
+      "🔵",
+      "🟡",
+      "🟢"
+    ],
+    "defaultNames": [
+      "你",
+      "电脑A",
+      "电脑B",
+      "电脑C"
+    ]
+  },
+  "tiles": [
+    {
+      "id": 0,
+      "type": "start",
+      "lane": 0,
+      "color": "green",
+      "label": "起点",
+      "colorIndex": 3
+    },
+    {
+      "id": 1,
+      "type": "normal",
+      "lane": 0,
+      "color": "green",
+      "colorIndex": 3
+    },
+    {
+      "id": 2,
+      "type": "normal",
+      "lane": 0,
+      "color": "white",
+      "colorIndex": -1,
+      "legacyType": "jump"
+    },
+    {
+      "id": 3,
+      "type": "normal",
+      "lane": 0,
+      "color": "yellow",
+      "colorIndex": 2
+    },
+    {
+      "id": 4,
+      "type": "normal",
+      "lane": 0,
+      "color": "green",
+      "colorIndex": 3
+    },
+    {
+      "id": 5,
+      "type": "normal",
+      "lane": 0,
+      "color": "red",
+      "colorIndex": 0,
+      "legacyType": "fly"
+    },
+    {
+      "id": 6,
+      "type": "normal",
+      "lane": 0,
+      "color": "red",
+      "colorIndex": 0
+    },
+    {
+      "id": 7,
+      "type": "normal",
+      "lane": 0,
+      "color": "yellow",
+      "colorIndex": 2
+    },
+    {
+      "id": 8,
+      "type": "normal",
+      "lane": 0,
+      "color": "blue",
+      "colorIndex": 1
+    },
+    {
+      "id": 9,
+      "type": "normal",
+      "lane": 0,
+      "color": "green",
+      "colorIndex": 3
+    },
+    {
+      "id": 10,
+      "type": "normal",
+      "lane": 0,
+      "color": "red",
+      "colorIndex": 0
+    },
+    {
+      "id": 11,
+      "type": "normal",
+      "lane": 0,
+      "color": "red",
+      "colorIndex": 0
+    },
+    {
+      "id": 12,
+      "type": "normal",
+      "lane": 0,
+      "color": "green",
+      "colorIndex": 3
+    },
+    {
+      "id": 13,
+      "type": "normal",
+      "lane": 1,
+      "color": "red",
+      "colorIndex": 0
+    },
+    {
+      "id": 14,
+      "type": "start",
+      "lane": 1,
+      "color": "red",
+      "colorIndex": 0,
+      "legacyType": "jump",
+      "label": "起点"
+    },
+    {
+      "id": 15,
+      "type": "normal",
+      "lane": 1,
+      "color": "white",
+      "colorIndex": -1
+    },
+    {
+      "id": 16,
+      "type": "normal",
+      "lane": 1,
+      "color": "blue",
+      "colorIndex": 1,
+      "legacyType": "fly"
+    },
+    {
+      "id": 17,
+      "type": "normal",
+      "lane": 1,
+      "color": "green",
+      "colorIndex": 3
+    },
+    {
+      "id": 18,
+      "type": "normal",
+      "lane": 1,
+      "color": "red",
+      "colorIndex": 0
+    },
+    {
+      "id": 19,
+      "type": "normal",
+      "lane": 1,
+      "color": "yellow",
+      "colorIndex": 2
+    },
+    {
+      "id": 20,
+      "type": "normal",
+      "lane": 1,
+      "color": "white",
+      "colorIndex": -1
+    },
+    {
+      "id": 21,
+      "type": "normal",
+      "lane": 1,
+      "color": "green",
+      "colorIndex": 3
+    },
+    {
+      "id": 22,
+      "type": "normal",
+      "lane": 1,
+      "color": "blue",
+      "colorIndex": 1
+    },
+    {
+      "id": 23,
+      "type": "normal",
+      "lane": 1,
+      "color": "red",
+      "colorIndex": 0
+    },
+    {
+      "id": 24,
+      "type": "normal",
+      "lane": 1,
+      "color": "yellow",
+      "colorIndex": 2
+    },
+    {
+      "id": 25,
+      "type": "normal",
+      "lane": 1,
+      "color": "yellow",
+      "colorIndex": 2
+    },
+    {
+      "id": 26,
+      "type": "normal",
+      "lane": 2,
+      "color": "yellow",
+      "target": 0,
+      "colorIndex": 2
+    },
+    {
+      "id": 27,
+      "type": "start",
+      "lane": 2,
+      "color": "yellow",
+      "colorIndex": 2,
+      "legacyType": "jump",
+      "label": "起点"
+    },
+    {
+      "id": 28,
+      "type": "normal",
+      "lane": 2,
+      "color": "green",
+      "colorIndex": 3
+    },
+    {
+      "id": 29,
+      "type": "normal",
+      "lane": 2,
+      "color": "green",
+      "colorIndex": 3
+    },
+    {
+      "id": 30,
+      "type": "normal",
+      "lane": 2,
+      "color": "blue",
+      "colorIndex": 1,
+      "legacyType": "fly"
+    },
+    {
+      "id": 31,
+      "type": "normal",
+      "lane": 2,
+      "color": "blue",
+      "colorIndex": 1
+    },
+    {
+      "id": 32,
+      "type": "normal",
+      "lane": 2,
+      "color": "blue",
+      "colorIndex": 1
+    },
+    {
+      "id": 33,
+      "type": "normal",
+      "lane": 2,
+      "color": "blue",
+      "colorIndex": 1
+    },
+    {
+      "id": 34,
+      "type": "normal",
+      "lane": 2,
+      "color": "white",
+      "colorIndex": -1
+    },
+    {
+      "id": 35,
+      "type": "normal",
+      "lane": 2,
+      "color": "blue",
+      "colorIndex": 1
+    },
+    {
+      "id": 36,
+      "type": "normal",
+      "lane": 2,
+      "color": "yellow",
+      "colorIndex": 2
+    },
+    {
+      "id": 37,
+      "type": "normal",
+      "lane": 2,
+      "color": "red",
+      "colorIndex": 0
+    },
+    {
+      "id": 38,
+      "type": "normal",
+      "lane": 2,
+      "color": "green",
+      "colorIndex": 3
+    },
+    {
+      "id": 39,
+      "type": "normal",
+      "lane": 3,
+      "color": "blue",
+      "colorIndex": 1
+    },
+    {
+      "id": 40,
+      "type": "start",
+      "lane": 3,
+      "color": "blue",
+      "colorIndex": 1,
+      "legacyType": "jump",
+      "label": "起点"
+    },
+    {
+      "id": 41,
+      "type": "normal",
+      "lane": 3,
+      "color": "blue",
+      "colorIndex": 1
+    },
+    {
+      "id": 42,
+      "type": "normal",
+      "lane": 3,
+      "color": "white",
+      "colorIndex": -1,
+      "legacyType": "fly"
+    },
+    {
+      "id": 43,
+      "type": "normal",
+      "lane": 3,
+      "color": "yellow",
+      "colorIndex": 2
+    },
+    {
+      "id": 44,
+      "type": "normal",
+      "lane": 3,
+      "color": "red",
+      "colorIndex": 0
+    },
+    {
+      "id": 45,
+      "type": "normal",
+      "lane": 3,
+      "color": "green",
+      "colorIndex": 3
+    },
+    {
+      "id": 46,
+      "type": "normal",
+      "lane": 3,
+      "color": "blue",
+      "colorIndex": 1
+    },
+    {
+      "id": 47,
+      "type": "normal",
+      "lane": 3,
+      "color": "green",
+      "colorIndex": 3
+    },
+    {
+      "id": 48,
+      "type": "normal",
+      "lane": 3,
+      "color": "red",
+      "colorIndex": 0
+    },
+    {
+      "id": 49,
+      "type": "normal",
+      "lane": 3,
+      "color": "white",
+      "colorIndex": -1
+    },
+    {
+      "id": 50,
+      "type": "normal",
+      "lane": 3,
+      "color": "yellow",
+      "colorIndex": 2
+    },
+    {
+      "id": 51,
+      "type": "normal",
+      "lane": 3,
+      "color": "blue",
+      "colorIndex": 1
+    }
+  ],
+  "homeEntrances": [
+    25,
+    51,
+    38,
+    12
+  ],
+  "homePaths": [
+    [
+      25,
+      52,
+      53,
+      54,
+      55,
+      56,
+      57
+    ],
+    [
+      51,
+      58,
+      59,
+      60,
+      61,
+      62,
+      63
+    ],
+    [
+      38,
+      64,
+      65,
+      66,
+      67,
+      68,
+      69
+    ],
+    [
+      12,
+      70,
+      71,
+      72,
+      73,
+      74,
+      75
+    ]
+  ],
+  "homeFinish": null,
+  "starts": [
+    14,
+    40,
+    27,
+    0
+  ],
+  "homeStretchLen": 6,
+  "flyRule": {
+    "enabled": true,
+    "steps": 4,
+    "chain": false,
+    "desc": "落到与自己棋子同色的格子, 自动往前跳 4 格 (只跳一次, 不连锁)"
+  },
+  "takeoffRolls": [
+    5,
+    6
+  ],
+  "laneSlots": [
+    3,
+    0,
+    2,
+    1
+  ]
+}

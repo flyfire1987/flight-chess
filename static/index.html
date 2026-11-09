@@ -1,0 +1,1166 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>飞行棋 · Flight Chess</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8E%B2%3C/text%3E%3C/svg%3E">
+<script src="/flight-chess/static/vendor/socket.io.min.js"></script>
+<style>
+    :root {
+        /* 经典飞行棋皮肤: 木桌 + 米色浮雕格 + 绿呢 */
+        --bg: #8b5e34;
+        --panel: #f4e4c1;
+        --panel-2: #e6d2a8;
+        --text: #4a2f18;
+        --muted: #8a6a4a;
+        --accent: #c2410c;
+        --cell: #f7ecd4;
+        --cell-edge: #b89b6d;
+        --cell-hi: #fffdf6;
+        --cell-lo: #d9c39a;
+        --wood-1: #a9713f;
+        --wood-2: #8b5a2b;
+        --felt: #2f6b46;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body {
+        margin: 0; padding: 0;
+        background:
+            repeating-linear-gradient(90deg, rgba(0,0,0,.05) 0 2px, transparent 2px 7px),
+            linear-gradient(160deg, var(--wood-1) 0%, var(--wood-2) 60%, #6f4620 100%);
+        background-attachment: fixed;
+        color: var(--text);
+        font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Helvetica Neue", sans-serif;
+        min-height: 100%;
+    }
+    .wrap { max-width: 1180px; margin: 0 auto; padding: 12px; }
+    .hide { display: none !important; }
+
+    header {
+        display: flex; align-items: center; justify-content: space-between;
+        gap: 12px; flex-wrap: wrap; margin-bottom: 10px;
+    }
+    .title { font-size: 22px; font-weight: 700; letter-spacing: .5px; }
+    .title small { font-size: 12px; color: var(--muted); font-weight: 400; margin-left: 8px; }
+    .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+    button {
+        background: linear-gradient(180deg, #fbf1dc, #dcc49a);
+        color: var(--text);
+        border: 1px solid var(--cell-edge);
+        border-radius: 8px;
+        padding: 9px 16px; font-size: 14px; cursor: pointer;
+        box-shadow: 0 2px 0 rgba(120,85,45,.45), inset 0 1px 0 var(--cell-hi);
+        transition: all .12s;
+        font-weight: 600;
+    }
+    button:hover:not(:disabled) { transform: translateY(-1px); }
+    button:active:not(:disabled) { transform: translateY(1px); box-shadow: 0 1px 0 rgba(120,85,45,.45); }
+    button:disabled { opacity: .45; cursor: not-allowed; }
+    button.primary {
+        background: linear-gradient(180deg, #e2622f, #b83a10);
+        border-color: #8f2d0b; color: #fff8ec;
+        text-shadow: 0 1px 1px rgba(0,0,0,.35);
+    }
+    button.ghost { background: rgba(255,255,255,.28); box-shadow: none; }
+
+    input[type=text], input[type=number] {
+        background: #fffdf5; color: var(--text);
+        border: 1px solid var(--cell-edge); border-radius: 8px;
+        padding: 10px 14px; font-size: 15px; width: 100%;
+        box-shadow: inset 0 1px 3px rgba(120,85,45,.25);
+    }
+    input:focus { outline: none; border-color: var(--accent); }
+    input::placeholder { color: #b09a7c; }
+
+    .layout { display: grid; grid-template-columns: 1fr 320px; gap: 12px; align-items: start; }
+    @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+
+    .card {
+        background: linear-gradient(180deg, #fbf0da, #ecd8b0);
+        border: 2px solid var(--wood-2);
+        border-radius: 12px; padding: 14px;
+        box-shadow: 0 4px 12px rgba(60,35,10,.35), inset 0 1px 0 var(--cell-hi);
+    }
+    .card h3 {
+        margin: 0 0 10px; font-size: 14px; font-weight: 700;
+        color: #7a4a1e; text-transform: uppercase; letter-spacing: 2px;
+        border-bottom: 2px solid var(--cell-edge); padding-bottom: 6px;
+        text-shadow: 0 1px 0 var(--cell-hi);
+    }
+
+    /* ─────────────── 首页 / 大厅 ─────────────── */
+    #screen-home {
+        max-width: 560px; margin: 24px auto;
+    }
+    .home-card {
+        background: linear-gradient(180deg, #fbf0da, #ecd8b0);
+        border: 3px solid var(--wood-2);
+        border-radius: 18px; padding: 24px;
+        box-shadow: 0 10px 30px rgba(40,20,5,.45), inset 0 1px 0 var(--cell-hi);
+    }
+    .home-title {
+        text-align: center; font-size: 30px; font-weight: 800;
+        margin-bottom: 4px;
+        color: #7a4a1e;
+        text-shadow: 0 1px 0 var(--cell-hi), 0 2px 4px rgba(80,45,15,.35);
+    }
+    .home-sub {
+        text-align: center; color: #8a6a4a; font-size: 13px;
+        margin-bottom: 22px;
+        text-shadow: 0 1px 0 var(--cell-hi);
+    }
+    .field { margin-bottom: 16px; }
+    .field label {
+        display: block; font-size: 12px; color: var(--muted);
+        margin-bottom: 6px; font-weight: 600;
+    }
+    .mode-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 18px; }
+    .mode-btn {
+        padding: 16px 10px; border-radius: 12px; border: 2px solid var(--cell-edge);
+        background: linear-gradient(180deg, #fffdf5, #ecdcb8); cursor: pointer; text-align: center;
+        transition: all .15s; color: var(--text);
+    }
+    .mode-btn:hover { border-color: #475569; }
+    .mode-btn.active { border-color: var(--accent); background: linear-gradient(180deg, #ffe9d2, #f7c99a); box-shadow: 0 0 0 1px rgba(194,65,12,.35), 0 3px 8px rgba(120,70,25,.25); }
+    .mode-btn .ic { font-size: 26px; display: block; margin-bottom: 4px; }
+    .mode-btn .nm { font-size: 14px; font-weight: 600; }
+    .mode-btn .ds { font-size: 11px; color: var(--muted); margin-top: 3px; }
+
+    .count-row { display: flex; gap: 8px; }
+    .count-row button { flex: 1; }
+    .count-row button.active {
+        background: var(--accent); border-color: var(--accent); font-weight: 600;
+    }
+
+    .btn-row { display: flex; gap: 10px; }
+    .btn-row button { flex: 1; padding: 13px; font-size: 15px; }
+
+    .room-code-box {
+        text-align: center; padding: 18px;
+        background: linear-gradient(180deg, #fffdf5, #f0e0bd);
+        border: 2px dashed var(--accent);
+        border-radius: 14px; margin-bottom: 16px;
+        box-shadow: inset 0 1px 4px rgba(120,85,45,.22);
+    }
+    .room-code-box .lbl { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    .room-code-box .code {
+        font-size: 42px; font-weight: 800; letter-spacing: 10px;
+        color: var(--accent); font-family: ui-monospace, Menlo, monospace;
+    }
+    .room-code-box .tip { font-size: 12px; color: var(--muted); margin-top: 8px; }
+
+    .seat-list { display: flex; flex-direction: column; gap: 8px; margin: 14px 0; }
+    .seat {
+        display: flex; align-items: center; gap: 10px;
+        background: linear-gradient(180deg, #fffdf5, #ecdcb8); border: 2px solid var(--cell-edge);
+        border-radius: 10px; padding: 9px 12px; font-size: 14px;
+    }
+    .seat.empty { opacity: .55; border-style: dashed; }
+    .seat.me { border-color: var(--accent); }
+    .seat .st {
+        width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 14px; border: 2px solid rgba(255,255,255,.35);
+    }
+    .seat .nm2 { flex: 1; }
+    .seat .tag {
+        font-size: 10px; padding: 2px 7px; border-radius: 6px;
+        background: #334155; color: #cbd5e1;
+    }
+    .seat .tag.ai { background: #78350f; color: #fcd34d; }
+    .seat .tag.off { background: #7f1d1d; color: #fca5a5; }
+
+    .join-row { display: flex; gap: 10px; }
+    .join-row input { letter-spacing: 6px; font-family: ui-monospace, monospace; text-align: center; }
+    .join-row button { white-space: nowrap; padding: 10px 18px; }
+
+    .err { color: #f87171; font-size: 13px; margin-top: 10px; min-height: 18px; text-align: center; }
+    .ok { color: #4ade80; font-size: 13px; margin-top: 10px; min-height: 18px; text-align: center; }
+
+    /* ─────────────── 棋盘 ─────────────── */
+    #board {
+        position: relative; width: 100%; aspect-ratio: 1 / 1;
+        max-width: 720px; margin: 0 auto;
+        background:
+            radial-gradient(ellipse at 50% 45%, rgba(255,255,255,.10), transparent 65%),
+            repeating-linear-gradient(45deg, rgba(255,255,255,.025) 0 4px, transparent 4px 9px),
+            var(--felt);
+        border: 6px solid var(--wood-2);
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow:
+            0 10px 26px rgba(40,20,5,.55),
+            0 0 0 2px rgba(255,255,255,.12) inset,
+            0 0 34px rgba(0,0,0,.35) inset;
+    }
+    /* 跑道格: 经典立体浮雕米色 */
+    .cell {
+        position: absolute; border-radius: 4px;
+        background: linear-gradient(180deg, var(--cell-hi) 0%, var(--cell) 45%, var(--cell-lo) 100%);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 11px; color: #8a6a3a; font-weight: 700;
+        border: 1px solid var(--cell-edge);
+        box-shadow:
+            inset 0 1.5px 0 rgba(255,255,255,.95),
+            inset 0 -2px 3px rgba(120,85,45,.35),
+            0 1px 2px rgba(40,25,10,.45);
+    }
+    .cell.start {
+        background: linear-gradient(180deg, #fff8d8, #f0cf6e);
+        border-color: #b98f2e; color: #8a6410;
+        box-shadow: inset 0 1.5px 0 rgba(255,255,255,.95), inset 0 -2px 3px rgba(150,110,20,.4), 0 0 8px rgba(255,215,120,.5);
+    }
+    /* 跑道格: 白底为主, 彩色格断续分布 (对照经典棋盘) */
+    .cell.plain {
+        background: linear-gradient(180deg, #ffffff, #e9e9e9);
+        border-color: #b9b9b9; color: #8a8a8a;
+    }
+    .cell.c0 {
+        background: linear-gradient(180deg, #ff8f88, #d0342c);
+        border-color: #9c2a24; color: #fff;
+    }
+    .cell.c1 {
+        background: linear-gradient(180deg, #6fa3dc, #1f5fa8);
+        border-color: #164a86; color: #fff;
+    }
+    .cell.c2 {
+        background: linear-gradient(180deg, #f5cf4e, #d9a406);
+        border-color: #a97f05; color: #4a3a00;
+    }
+    .cell.c3 {
+        background: linear-gradient(180deg, #74c486, #2f8b45);
+        border-color: #256e37; color: #fff;
+    }
+    .cell.start.c0 { border-color: #d0342c; }
+    .cell.start.c1 { border-color: #1f5fa8; }
+    .cell.start.c2 { border-color: #c99a06; }
+    .cell.start.c3 { border-color: #2f8b45; }
+    .cell.entrance { border-width: 2.5px; }
+    .cell.home {
+        background: linear-gradient(180deg, #ffffff, #efdfc0);
+        box-shadow: inset 0 1.5px 0 rgba(255,255,255,.95), inset 0 -2px 3px rgba(120,85,45,.3), 0 1px 2px rgba(40,25,10,.4);
+    }
+    .cell .glyph { font-size: 13px; text-shadow: 0 1px 0 rgba(255,255,255,.7); }
+    /* 中心终点圆盘 */
+    .center-badge {
+        position: absolute; border-radius: 50%;
+        background: radial-gradient(circle at 38% 32%, #fffdf2, #e8cf9c 62%, #c9a768);
+        border: 3px solid var(--wood-2);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 15px; font-weight: 800; color: #7a4a1e;
+        box-shadow: 0 3px 8px rgba(30,15,5,.55), inset 0 2px 4px rgba(255,255,255,.9);
+        text-shadow: 0 1px 0 rgba(255,255,255,.8);
+        z-index: 1;
+    }
+    /* 角落机场停机坪: 4 个大圆角实心块 (对照经典棋盘) */
+    .hangar {
+        position: absolute; border-radius: 7px;
+        background: linear-gradient(180deg, rgba(255,255,255,.30), rgba(0,0,0,.10));
+        border: 2px solid rgba(255,255,255,.55);
+        box-shadow: inset 0 2px 5px rgba(255,255,255,.35), 0 2px 5px rgba(0,0,0,.35);
+        z-index: 1;
+    }
+    /* 终点道大格 */
+    .cell.bigpath {
+        border-radius: 6px;
+        box-shadow: inset 0 2px 0 rgba(255,255,255,.95), inset 0 -3px 5px rgba(120,85,45,.30), 0 2px 4px rgba(40,25,10,.45);
+    }
+
+    /* 棋子: 经典飞机造型 */
+    .piece {
+        position: absolute; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 13px; line-height: 1; cursor: default;
+        border: 2px solid rgba(255,255,255,.92);
+        box-shadow: 0 2px 6px rgba(0,0,0,.55), inset 0 -2px 3px rgba(0,0,0,.25);
+        transition: transform .12s;
+        z-index: 5;
+    }
+    .piece .plane { font-size: 78%; filter: drop-shadow(0 1px 1px rgba(0,0,0,.4)); }
+    .piece.selectable { animation: pulse 1s infinite; cursor: pointer; }
+    .piece.dim { opacity: .45; }
+    .piece.flying { animation: flyin .35s ease-out; }
+    @keyframes flyin {
+        from { transform: scale(.3) rotate(-25deg); opacity: .2; }
+        to   { transform: scale(1) rotate(0); opacity: 1; }
+    }
+    @keyframes pulse {
+        0%,100% { transform: scale(1); }
+        50% { transform: scale(1.22); }
+    }
+    .badge {
+        position: absolute; z-index: 6; font-size: 9px; font-weight: 700;
+        background: rgba(0,0,0,.65); border-radius: 4px; padding: 1px 4px;
+        color: #fff; pointer-events: none;
+    }
+
+    /* ─────────────── 侧栏 ─────────────── */
+    .players { display: flex; flex-direction: column; gap: 8px; }
+    .player {
+        background: var(--panel); border: 1px solid #334155; border-radius: 12px;
+        padding: 10px 12px; display: flex; align-items: center; gap: 10px;
+        transition: border-color .2s, background .2s;
+    }
+    .player.active { border-color: var(--accent); background: #223047; }
+    .player.active .p-name { color: var(--accent); }
+    .p-token {
+        width: 30px; height: 30px; border-radius: 50%; display: flex;
+        align-items: center; justify-content: center; font-size: 16px;
+        border: 2px solid rgba(255,255,255,.4); flex-shrink: 0;
+    }
+    .p-info { flex: 1; min-width: 0; }
+    .p-name { font-size: 14px; font-weight: 600; }
+    .p-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .p-pieces { display: flex; gap: 3px; font-size: 13px; }
+    .p-pieces .pc { opacity: .25; }
+    .p-pieces .pc.done { opacity: 1; }
+    .p-pieces .pc.wait { opacity: .45; }
+    .p-score {
+        font-size: 12px; color: #fbbf24; font-weight: 700;
+        min-width: 34px; text-align: right;
+    }
+
+    .dice-area { text-align: center; padding: 6px 0 2px; }
+    #dice {
+        font-size: 52px; line-height: 1; display: inline-block;
+        transition: transform .2s;
+    }
+    #dice.rolling { animation: roll .5s ease-in-out; }
+    @keyframes roll {
+        0% { transform: rotate(0) scale(1); }
+        50% { transform: rotate(180deg) scale(1.2); }
+        100% { transform: rotate(360deg) scale(1); }
+    }
+    .roll-btn { width: 100%; margin-top: 10px; padding: 13px; font-size: 16px; }
+
+    .log { max-height: 220px; overflow-y: auto; font-size: 12px; line-height: 1.6; }
+    .log-item {
+        padding: 4px 8px; border-left: 2px solid #334155; margin-bottom: 3px;
+        color: var(--muted); border-radius: 0 4px 4px 0;
+    }
+    .log-item.roll { border-left-color: var(--accent); }
+    .log-item.capture { border-left-color: #ef4444; color: #fca5a5; }
+    .log-item.finish { border-left-color: #f59e0b; color: #fcd34d; font-weight: 600; }
+    .log-item.penalty { border-left-color: #f97316; color: #fdba74; }
+    .log-item.move { border-left-color: #64748b; }
+
+    .hint { font-size: 12px; color: var(--muted); text-align: center; margin-top: 10px; min-height: 18px; }
+    .hint b { color: var(--accent); }
+
+    .overlay {
+        position: fixed; inset: 0; background: rgba(2,6,23,.85);
+        display: flex; align-items: center; justify-content: center;
+        z-index: 50; display: none; padding: 20px;
+    }
+    .overlay.show { display: flex; }
+    .modal {
+        background: var(--panel); border: 1px solid #475569; border-radius: 16px;
+        padding: 26px; max-width: 380px; width: 100%; text-align: center;
+    }
+    .modal h2 { margin: 0 0 8px; font-size: 24px; }
+    .modal p { color: var(--muted); font-size: 14px; margin: 0 0 18px; line-height: 1.6; }
+    .modal button { width: 100%; padding: 12px; }
+</style>
+</head>
+<body>
+
+<!-- ══════════════ 首页 / 大厅 ══════════════ -->
+<div class="wrap" id="screen-home">
+    <div class="home-card">
+        <div class="home-title">🎲 飞行棋</div>
+        <div class="home-sub">掷骰飞行 · 跳跃飞跃 · 撞机击飞</div>
+
+        <div class="field">
+            <label>你的昵称</label>
+            <input type="text" id="nickname" placeholder="请输入昵称" maxlength="12" value="">
+        </div>
+
+        <div class="mode-row">
+            <div class="mode-btn active" id="mode-single" onclick="setMode('single')">
+                <span class="ic">👤</span>
+                <div class="nm">单人模式</div>
+                <div class="ds">与 AI 对战</div>
+            </div>
+            <div class="mode-btn" id="mode-multi" onclick="setMode('multi')">
+                <span class="ic">👥</span>
+                <div class="nm">多人联机</div>
+                <div class="ds">4 位房间号</div>
+            </div>
+        </div>
+
+        <div class="field">
+            <label>游戏人数 <span id="countHint" style="font-weight:400">(不足用 AI 补位)</span></label>
+            <div class="count-row" id="countRow">
+                <button onclick="setCount(2)" data-c="2">2 人</button>
+                <button onclick="setCount(3)" data-c="3">3 人</button>
+                <button class="active" onclick="setCount(4)" data-c="4">4 人</button>
+            </div>
+        </div>
+
+        <!-- 单人模式 -->
+        <div id="pane-single">
+            <div class="btn-row">
+                <button class="primary" onclick="startSingle()">开始游戏</button>
+            </div>
+        </div>
+
+        <!-- 多人模式: 创建 / 加入 -->
+        <div id="pane-multi" class="hide">
+            <div class="field">
+                <label>创建房间 (把房间号发给朋友)</label>
+                <div class="btn-row">
+                    <button class="primary" onclick="createRoom()">创建房间</button>
+                </div>
+            </div>
+            <div class="field">
+                <label>加入房间</label>
+                <div class="join-row">
+                    <input type="text" id="joinCode" placeholder="4 位数字" maxlength="4"
+                           inputmode="numeric" oninput="this.value=this.value.replace(/\D/g,'')">
+                    <button onclick="joinRoom()">加入</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="err" id="homeErr"></div>
+        <div class="ok" id="homeOk"></div>
+    </div>
+</div>
+
+<!-- ══════════════ 游戏页 ══════════════ -->
+<div class="wrap hide" id="screen-game">
+    <header>
+        <div class="title">🎲 飞行棋 <small id="gameSub"></small></div>
+        <div class="toolbar">
+            <span id="roomBadge" class="hide" style="font-size:13px;color:var(--accent);font-weight:600"></span>
+            <button class="ghost" onclick="backHome()">🏠 返回首页</button>
+            <button class="ghost" onclick="toggleSound()">🔊 音效</button>
+        </div>
+    </header>
+
+    <div class="layout">
+        <div class="card">
+            <div id="board"></div>
+            <div class="hint" id="hint">正在加载…</div>
+        </div>
+
+        <div>
+            <div class="card" style="margin-bottom:12px">
+                <div class="dice-area">
+                    <div id="dice">🎲</div>
+                    <button class="primary roll-btn" id="rollBtn" onclick="doRoll()">掷骰子</button>
+                    <button class="primary roll-btn hide" id="startBtn" onclick="startGame()">▶ 开始游戏</button>
+                </div>
+            </div>
+
+            <div class="card" style="margin-bottom:12px">
+                <h3 id="playerTitle">玩家</h3>
+                <div class="players" id="players"></div>
+            </div>
+
+            <div class="card">
+                <h3>战况</h3>
+                <div class="log" id="log"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="overlay" id="overlay">
+    <div class="modal">
+        <h2 id="ovTitle">🏆 游戏结束</h2>
+        <p id="ovMsg"></p>
+        <button class="primary" id="ovBtn" onclick="onOverlayBtn()">再来一局</button>
+    </div>
+</div>
+
+<script>
+const API = '/flight-chess';   // Caddy handle_path 会剥掉前缀
+
+const APP = {
+    mode: 'single',
+    playerCount: 4,
+    nickname: '',
+    socket: null,
+    roomId: null,
+    mySeat: null,
+    isHost: false,
+    room: null,      // 房间快照 (联机)
+    data: null,      // 对局状态
+    needChoice: false,
+    movable: [],
+    aiBusy: false,
+    sound: true,
+    lastRollShown: null,
+};
+
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+function beep(freq, dur, type = 'sine', vol = 0.08) {
+    if (!APP.sound) return;
+    try {
+        const o = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        o.type = type; o.frequency.value = freq;
+        g.gain.setValueAtTime(vol, audioCtx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + dur);
+        o.connect(g); g.connect(audioCtx.destination);
+        o.start(); o.stop(audioCtx.currentTime + dur);
+    } catch (e) { /* ignore */ }
+}
+function toggleSound() {
+    APP.sound = !APP.sound;
+    document.getElementById('soundBtn')?.setAttribute('data-on', APP.sound);
+    const btns = document.querySelectorAll('.toolbar button');
+    btns.forEach(b => { if (b.textContent.includes('音效')) b.textContent = APP.sound ? '🔊 音效' : '🔇 静音'; });
+    if (APP.sound) beep(660, 0.08);
+}
+
+// ─────────────── 首页交互 ───────────────
+function setMode(m) {
+    APP.mode = m;
+    document.getElementById('mode-single').classList.toggle('active', m === 'single');
+    document.getElementById('mode-multi').classList.toggle('active', m === 'multi');
+    document.getElementById('pane-single').classList.toggle('hide', m !== 'single');
+    document.getElementById('pane-multi').classList.toggle('hide', m !== 'multi');
+    document.getElementById('countHint').textContent =
+        m === 'multi' ? '(真人不足用 AI 补位)' : '';
+}
+function setCount(n) {
+    APP.playerCount = n;
+    document.querySelectorAll('#countRow button').forEach(b => {
+        b.classList.toggle('active', Number(b.dataset.c) === n);
+    });
+}
+function myName() {
+    const v = (document.getElementById('nickname').value || '').trim();
+    APP.nickname = v || (APP.mode === 'single' ? '你' : '玩家');
+    return APP.nickname;
+}
+function showHomeErr(msg) {
+    document.getElementById('homeErr').textContent = msg || '';
+    document.getElementById('homeOk').textContent = '';
+}
+function showHomeOk(msg) {
+    document.getElementById('homeOk').textContent = msg || '';
+    document.getElementById('homeErr').textContent = '';
+}
+
+function backHome() {
+    if (APP.socket) {
+        APP.socket.emit('leave_room');
+        APP.socket.disconnect();
+        APP.socket = null;
+    }
+    APP.roomId = null; APP.mySeat = null; APP.isHost = false;
+    APP.room = null; APP.data = null; APP.needChoice = false; APP.movable = [];
+    document.getElementById('screen-game').classList.add('hide');
+    document.getElementById('screen-home').classList.remove('hide');
+    closeOverlay();
+}
+
+// ─────────────── 单人模式 (REST) ───────────────
+async function api(path, method = 'GET', body = null) {
+    const opts = { method, headers: { 'Content-Type': 'application/json' } };
+    if (body) opts.body = JSON.stringify(body);
+    const r = await fetch(API + path, opts);
+    return r.json();
+}
+
+async function startSingle() {
+    const n = myName();
+    const d = await api('/api/new', 'POST', { count: APP.playerCount, names: [n] });
+    if (!d.state) { showHomeErr('开局失败'); return; }
+    APP.data = d.state;
+    APP.mode = 'single';
+    APP.needChoice = false; APP.movable = [];
+    showGame();
+    render();
+    setHint('点击「掷骰子」开始, 掷出 5 或 6 可让飞机离开机场');
+}
+
+async function rollSingle() {
+    const d = await api('/api/roll', 'POST', {});
+    if (!d || d.ok === false) { setHint('❌ ' + (d?.msg || '掷骰失败')); return; }
+    showRoll(d.lastRoll);
+    APP.data = d;
+    if (d.needPieceChoice) {
+        APP.needChoice = true;
+        APP.movable = d.movablePieces || [];
+        setHint('请选择要移动的棋子 (点击棋盘上高亮的棋子)');
+    }
+    render();
+    // 轮到 AI → 自动接管 (AI 掷 6 可连续行动, 故用循环)
+    runAITurns();
+}
+async function moveSingle(pieceId) {
+    const d = await api('/api/move', 'POST', { pieceId });
+    if (!d || d.ok === false) { setHint('❌ ' + (d?.msg || '移动失败')); return; }
+    APP.needChoice = false; APP.movable = [];
+    APP.data = d;
+    render();
+    // 轮到 AI → 自动接管
+    runAITurns();
+}
+
+// ─────────────── 单人模式 AI 自动行动 ───────────────
+// 后端 /api/ai_turn 完成「掷骰 + 启发式选子 + 移动」, 前端只需循环调用,
+// 直到回合交回真人 (AI 掷 6 有续掷权, 一次调用走不完一整轮)
+const AI_THINK_MS = 650;
+
+async function runAITurns() {
+    if (APP.mode !== 'single') return;
+    if (APP.aiBusy) return;   // 防止并发重复触发
+    APP.aiBusy = true;
+    try {
+        let guard = 0;
+        while (guard++ < 200) {
+            const d = APP.data;
+            if (!d || d.finished) break;
+            const cur = d.players[d.turn];
+            if (!cur || !cur.isAI) break;      // 回合已交回真人
+            await new Promise(r => setTimeout(r, AI_THINK_MS));
+            const res = await api('/api/ai_turn', 'POST');
+            if (!res || res.ok === false) {
+                setHint('❌ ' + (res?.msg || 'AI 行动失败'));
+                break;
+            }
+            APP.data = res;
+            if (res.lastRoll != null) showRoll(res.lastRoll);
+            render();
+        }
+    } finally {
+        APP.aiBusy = false;
+    }
+}
+
+// ─────────────── 多人联机 (Socket.IO) ───────────────
+function connectSocket() {
+    if (APP.socket) return APP.socket;
+    const s = io({
+        path: '/flight-chess/socket.io',
+        transports: ['websocket', 'polling'],
+        reconnection: true,
+        reconnectionDelay: 1000,
+    });
+    s.on('connect', () => { console.log('[socket] connected', s.id); });
+    s.on('connect_error', (e) => { showHomeErr('连接服务器失败: ' + (e.message || e)); });
+
+    s.on('room_created', (d) => {
+        APP.roomId = d.roomId;
+        APP.isHost = true;
+        showHomeOk(`房间已创建，房间号 ${d.roomId}`);
+        showGame();
+        render();
+        setHint(`房间号 <b>${d.roomId}</b> — 发给朋友加入，人数不足自动 AI 补位`);
+    });
+
+    s.on('room_joined', (d) => {
+        APP.roomId = d.roomId;
+        APP.isHost = false;
+        APP.mySeat = d.seat;
+        showHomeOk(`已加入房间 ${d.roomId}`);
+        showGame();
+        render();
+        setHint(`已加入房间 <b>${d.roomId}</b>，等待房主开始游戏`);
+    });
+
+    s.on('room_update', (d) => {
+        APP.room = d;
+        if (d.mySeat !== undefined && d.mySeat !== null) APP.mySeat = d.mySeat;
+        if (d.game) {
+            APP.data = d.game;
+            APP.room = d;
+        }
+        render();
+    });
+
+    s.on('dice_rolled', (d) => {
+        showRoll(d.value);
+        beep(520 + d.value * 60, 0.12, 'triangle', 0.09);
+        if (d.needPieceChoice && d.seat === APP.mySeat) {
+            APP.needChoice = true;
+            APP.movable = d.movablePieces || [];
+            setHint('请选择要移动的棋子 (点击棋盘上高亮的棋子)');
+        }
+    });
+
+    s.on('move_done', () => {
+        APP.needChoice = false; APP.movable = [];
+        beep(760, 0.1, 'sine', 0.07);
+    });
+
+    s.on('error', (d) => {
+        const msg = d?.msg || '未知错误';
+        if (APP.roomId) setHint('❌ ' + msg);
+        else showHomeErr(msg);
+    });
+
+    APP.socket = s;
+    return s;
+}
+
+function createRoom() {
+    myName();
+    showHomeErr(''); showHomeOk('');
+    const s = connectSocket();
+    s.emit('create_room', { name: APP.nickname, maxPlayers: APP.playerCount });
+}
+
+function joinRoom() {
+    const code = (document.getElementById('joinCode').value || '').trim();
+    if (!/^\d{4}$/.test(code)) { showHomeErr('房间号必须是 4 位数字'); return; }
+    myName();
+    showHomeErr(''); showHomeOk('');
+    const s = connectSocket();
+    s.emit('join_room', { roomId: code, name: APP.nickname });
+}
+
+function startGame() {
+    if (!APP.socket) return;
+    APP.socket.emit('start_game');
+}
+
+// ─────────────── 统一动作分发 ───────────────
+async function doRoll() {
+    if (!APP.data || APP.data.finished) return;
+    if (APP.data.pendingRoll !== null) return;
+    if (APP.mode === 'single') await rollSingle();
+    else APP.socket.emit('roll');
+}
+
+async function doMove(pieceId) {
+    if (!APP.needChoice) return;
+    if (APP.mode === 'single') await moveSingle(pieceId);
+    else APP.socket.emit('move', { pieceId });
+}
+
+function showRoll(v) {
+    if (v === null || v === undefined) return;
+    APP.lastRollShown = v;
+    const el = document.getElementById('dice');
+    el.textContent = '🎲';
+    el.classList.remove('rolling');
+    void el.offsetWidth;
+    el.classList.add('rolling');
+    setTimeout(() => {
+        el.textContent = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'][v - 1] || '🎲';
+        el.classList.remove('rolling');
+    }, 250);
+    beep(420 + v * 70, 0.1, 'triangle', 0.08);
+}
+
+function onOverlayBtn() {
+    closeOverlay();
+    if (APP.mode === 'single') {
+        startSingle();
+    } else if (APP.isHost) {
+        APP.socket.emit('restart_game');
+    } else {
+        setHint('等待房主重开…');
+    }
+}
+
+// ─────────────── 渲染 ───────────────
+const COLORS = ['#e23a3a', '#1565c0', '#fbc02d', '#2e7d32'];
+const boardEl = document.getElementById('board');
+const BOARD_N = 15;
+
+// 每格 15x15 网格坐标 [col,row]
+// board.json lane: lane0=id0..12, lane1=id13..25, lane2=id26..38, lane3=id39..51
+// 15x15 最外圈 56 格 - 4 角 = 52 格, 每 lane 13 格
+// 顺时针: lane0 顶边(左→右) lane1 右边(上→下) lane2 底边(右→左) lane3 左边(下→上)
+const GRID = (() => {
+    const seq = [];
+    const top = 0, bottom = 14, left = 0, right = 14;
+    for (let c = left; c <= 12; c++) seq.push([c, top]);        // lane0 顶边
+    for (let r = top; r <= 12; r++) seq.push([right, r]);       // lane1 右边
+    for (let c = right; c >= 2; c--) seq.push([c, bottom]);    // lane2 底边
+    for (let r = bottom; r >= 2; r--) seq.push([left, r]);     // lane3 左边
+    return seq;
+})();
+
+// ─────────────────────────────────────────────────────────────
+// 经典飞行棋棋盘几何 (对照参考图实测)
+//   棋盘 15x15 逻辑格, 但视觉上三种尺寸:
+//     跑道格   TRACK  = 21/378 归一化 (小方块)
+//     机场格   PARK  = 31/378 归一化 (大圆角块, 每色 4 个)
+//     终点道格 PATH  = 43/378 归一化 (大块)
+//   四角机场: 绿左上 / 红右上 / 蓝左下 / 黄右下
+// ─────────────────────────────────────────────────────────────
+const SLOT_LAYOUT = {
+    0: { name: '红', corner: '右上', start: [14, 0],  wait: [[12, 1], [13, 1], [12, 2], [13, 2]],
+         home: [[8, 7], [9, 7], [10, 7], [11, 7], [12, 7], [13, 7]] },
+    1: { name: '蓝', corner: '左下', start: [0, 14],  wait: [[1, 12], [2, 12], [1, 13], [2, 13]],
+         home: [[7, 8], [7, 9], [7, 10], [7, 11], [7, 12], [7, 13]] },
+    2: { name: '黄', corner: '右下', start: [14, 14], wait: [[12, 12], [13, 12], [12, 13], [13, 13]],
+         home: [[7, 1], [7, 2], [7, 3], [7, 4], [7, 5], [7, 6]] },
+    3: { name: '绿', corner: '左上', start: [0, 0],   wait: [[1, 1], [2, 1], [1, 2], [2, 2]],
+         home: [[6, 7], [5, 7], [4, 7], [3, 7], [2, 7], [1, 7]] },
+};
+
+// 跑道格 -> 所属 slot (按 lane 分段)
+const LANE_SLOT = [3, 0, 2, 1];
+
+// 终点道 (按 slot, 6 格)
+const HOME_LAYOUTS = [0, 1, 2, 3].map(s => SLOT_LAYOUT[s].home);
+
+// 视觉尺寸 (归一化到棋盘边长)
+const SZ = { track: 21/378, park: 31/378, path: 43/378 };
+
+// 跑道 52 格的"断续彩色"图案 (对照参考图实测: 每色赛段内白格与彩格交替出现)
+// 值: 0=白(底色) 1=该 lane 所属 slot 的彩色 2=浅色格
+// 参考图实测上边 (绿 lane) 呈 GGWYBGRRYBGRRR 的彩色断续
+const TRACK_PATTERN = [
+    // lane0 顶边 (绿, 13格)
+    'W','G','W','Y','G','R','R','Y','B','G','R','R','G',
+    // lane1 右边 (红, 13格)
+    'R','R','W','B','G','R','Y','W','G','B','R','Y','Y',
+    // lane2 底边 (黄, 13格)
+    'Y','W','G','G','B','B','B','B','W','B','Y','R','G',
+    // lane3 左边 (蓝, 13格)
+    'B','B','B','W','Y','R','G','B','G','R','W','Y','B',
+];
+
+// 图案字母 -> slot 索引 (R=0红 B=1蓝 Y=2黄 G=3绿 W=白)
+const PAT_SLOT = { R: 0, B: 1, Y: 2, G: 3 };
+
+// 飞机棋子图标
+const PLANE_ICON = '✈';
+function pieceInner(p) {
+    return '<span class="plane">' + PLANE_ICON + '</span>';
+}
+
+function showGame() {
+    document.getElementById('screen-home').classList.add('hide');
+    document.getElementById('screen-game').classList.remove('hide');
+    document.getElementById('gameSub').textContent =
+        APP.mode === 'single'
+            ? `${APP.playerCount} 人 · 单人 AI 对战`
+            : `${APP.room?.maxPlayers || APP.playerCount} 人 · 联机房间 ${APP.roomId || ''}`;
+    const rb = document.getElementById('roomBadge');
+    if (APP.mode === 'multi' && APP.roomId) {
+        rb.classList.remove('hide');
+        rb.textContent = `房间 ${APP.roomId}`;
+    } else rb.classList.add('hide');
+}
+
+function render() {
+    if (!APP.data) {
+        renderSeats();
+        updateControls();
+        return;
+    }
+    renderBoard(APP.data);
+    if (APP.mode === 'multi') renderSeats();
+    else renderPlayers(APP.data);
+    renderLog(APP.data);
+    updateControls();
+}
+
+function renderBoard(d) {
+    const board = d.board;
+    const total = board.tileCount;
+    boardEl.innerHTML = '';
+    const unit = 100 / BOARD_N;
+
+    // 4 个机场停机坪: 每色 4 个独立大圆角块 (对照经典棋盘)
+    d.players.forEach((p, pi) => {
+        const L = SLOT_LAYOUT[pi];
+        if (!L) return;
+        L.wait.forEach(w => {
+            const el = document.createElement('div');
+            el.className = 'hangar';
+            el.style.left = ((w[0] + 0.5) * unit - SZ.park * unit / 2) + '%';
+            el.style.top = ((w[1] + 0.5) * unit - SZ.park * unit / 2) + '%';
+            el.style.width = (SZ.park * unit) + '%';
+            el.style.height = (SZ.park * unit) + '%';
+            el.style.borderColor = p.color;
+            el.style.background = 'linear-gradient(180deg, ' + p.color + 'dd, ' + p.color + '99)';
+            boardEl.appendChild(el);
+        });
+    });
+
+    // 跑道格
+    for (let i = 0; i < total; i++) {
+        const tile = board.tiles[i];
+        const [c, r] = GRID[i];
+        const el = document.createElement('div');
+        el.className = 'cell';
+        let extra = '';
+        if (tile.type === 'jump') { el.classList.add('jump'); extra = '⤴'; }
+        else if (tile.type === 'fly') { el.classList.add('fly'); extra = '✈'; }
+        else if (tile.type === 'start') { el.classList.add('start'); extra = '★'; }
+        if (board.homeEntrances.includes(i)) {
+            el.classList.add('entrance');
+            el.style.borderColor = COLORS[board.homeEntrances.indexOf(i)];
+        }
+        // 起点格: 标记所属 slot
+        for (let si = 0; si < 4; si++) {
+            const L = SLOT_LAYOUT[si];
+            if (L && L.start[0] === c && L.start[1] === r) el.dataset.slot = String(si);
+        }
+        el.style.left = (c * unit) + '%';
+        el.style.top = (r * unit) + '%';
+        el.style.width = unit + '%';
+        el.style.height = unit + '%';
+        // 断续彩色: 按 TRACK_PATTERN 决定该格是白底还是彩色
+        const lane = tile.lane !== undefined ? tile.lane : Math.floor(i / 13);
+        const pat = TRACK_PATTERN[i] || 'W';
+        let ci = -1;
+        let cname = '白';
+        if (pat !== 'W') {
+            ci = PAT_SLOT[pat] !== undefined ? PAT_SLOT[pat] : (lane % 4);
+            el.classList.add('c' + ci);
+            cname = ['红', '蓝', '黄', '绿'][ci] || '';
+        } else {
+            el.classList.add('plain');
+        }
+        el.innerHTML = extra ? `<span class="glyph">${extra}</span>` : '';
+        el.title = `格 ${i} · ${cname}${tile.type === 'start' ? ' · 起点' : ''}
+落到同色格自动往前跳 4 格 (只跳一次)`;
+        boardEl.appendChild(el);
+    }
+
+    // 终点道: 只画实际存在的玩家
+    d.players.forEach((p, pi) => {
+        const lane = HOME_LAYOUTS[pi];
+        if (!lane) return;
+        lane.forEach(([c, r], li) => {
+            const el = document.createElement('div');
+            el.className = 'cell home bigpath';
+            const bw = SZ.path * unit;
+            el.style.left = ((c + 0.5) * unit - bw / 2) + '%';
+            el.style.top = ((r + 0.5) * unit - bw / 2) + '%';
+            el.style.width = bw + '%';
+            el.style.height = bw + '%';
+            el.style.borderColor = p.color;
+            el.innerHTML = `<span class="glyph" style="color:${p.color}">${li + 1}</span>`;
+            el.title = `${p.name} 终点道第 ${li + 1} 格`;
+            boardEl.appendChild(el);
+        });
+    });
+
+    // 中心终点圆盘 (经典: 4 条终点道汇聚处)
+    const cb = document.createElement('div');
+    cb.className = 'center-badge';
+    cb.style.left = (6.1 * unit) + '%';
+    cb.style.top = (6.1 * unit) + '%';
+    cb.style.width = (2.8 * unit) + '%';
+    cb.style.height = (2.8 * unit) + '%';
+    cb.textContent = '🏁';
+    cb.title = '终点';
+    boardEl.appendChild(cb);
+
+    // 棋子 (仅已起飞的, 待起飞的单独画在起点)
+    const perCell = {};
+    d.players.forEach(p => p.pieces.forEach(pc => {
+        if (pc.finished || pc.waiting) return;
+        (perCell[pc.pos] = perCell[pc.pos] || []).push({ pc, p });
+    }));
+
+    Object.keys(perCell).forEach(key => {
+        const arr = perCell[key];
+        const pos = Number(key);
+        let [c, r] = GRID[pos] || [0, 0];
+        // 终点跑道: 编号每色独立 (52~75), 用后端下发的 homePaths 反查
+        const pi = d.players.findIndex(p => p.pieces.some(x => x.id === arr[0].pc.id));
+        const paths = board.homePaths || [];
+        const ownerPath = pi >= 0 ? paths[pi] : null;
+        if (ownerPath && ownerPath.length) {
+            const idx = ownerPath.indexOf(pos);
+            if (idx >= 1) {
+                const lane = HOME_LAYOUTS[pi];
+                if (lane && lane[idx - 1]) [c, r] = lane[idx - 1];
+            }
+        }
+        arr.forEach((it, i) => {
+            const el = document.createElement('div');
+            el.className = 'piece';
+            const selectable = APP.needChoice && APP.movable.includes(it.pc.id);
+            if (selectable) el.classList.add('selectable');
+            el.innerHTML = pieceInner(it.p);
+            el.style.background = it.p.color;
+            el.style.color = '#fff';
+            const off = (i - (arr.length - 1) / 2) * 0.32;
+            el.style.left = `calc(${c * unit}% + ${off * unit}% + 3%)`;
+            el.style.top = `calc(${r * unit}% + 6%)`;
+            el.style.width = (unit * 0.62) + '%';
+            el.style.height = (unit * 0.62) + '%';
+            el.title = `${it.p.name} 棋子${it.pc.index + 1}`;
+            if (selectable) el.onclick = () => doMove(it.pc.id);
+            boardEl.appendChild(el);
+        });
+    });
+
+    // 起点待起飞 / 被撞飞: 各方棋子回到自己角落的 2x2 待命区
+    d.players.forEach((p, pi) => {
+        const wait = p.pieces.filter(pc => pc.waiting);
+        if (!wait.length) return;
+        const SL = SLOT_LAYOUT[pi];
+        const area = (SL && SL.wait) || SLOT_LAYOUT[0].wait;
+        wait.forEach((pc, i) => {
+            const slot = area[i] || area[0];
+            const el = document.createElement('div');
+            el.className = 'piece';
+            const selectable = APP.needChoice && APP.movable.includes(pc.id);
+            if (selectable) el.classList.add('selectable');
+            else el.style.opacity = '.7';
+            el.innerHTML = pieceInner(p);
+            el.style.background = p.color;
+            el.style.color = '#fff';
+            el.style.left = `calc(${slot[0] * unit}% + ${unit * 0.19}%)`;
+            el.style.top = `calc(${slot[1] * unit}% + ${unit * 0.19}%)`;
+            el.style.width = (unit * 0.62) + '%';
+            el.style.height = (unit * 0.62) + '%';
+            el.title = `${p.name} 棋子${pc.index + 1} 待起飞`;
+            if (selectable) el.onclick = () => doMove(pc.id);
+            boardEl.appendChild(el);
+        });
+    });
+
+    // 已到终点
+    const done = {};
+    d.players.forEach(p => p.pieces.forEach(pc => {
+        if (pc.finished) done[p.id] = (done[p.id] || 0) + 1;
+    }));
+    Object.keys(done).forEach(pid => {
+        const p = d.players[Number(pid)];
+        const el = document.createElement('div');
+        el.className = 'badge';
+        el.style.left = '45%';
+        el.style.top = '43%';
+        el.textContent = `${p.token}✓${done[pid]}`;
+        el.style.color = p.color;
+        boardEl.appendChild(el);
+    });
+}
+
+// 单人模式: 玩家列表来自对局状态
+function renderPlayers(d) {
+    const box = document.getElementById('players');
+    box.innerHTML = '';
+    d.players.forEach((p, i) => {
+        const el = document.createElement('div');
+        el.className = 'player' + (i === d.turn && !d.finished ? ' active' : '');
+        const pcs = p.pieces.map(pc => {
+            let cls = 'pc';
+            if (pc.finished) cls += ' done';
+            else if (pc.waiting) cls += ' wait';
+            return `<span class="${cls}">${p.token}</span>`;
+        }).join('');
+        el.innerHTML = `
+            <div class="p-token" style="background:${p.color}">${p.token}</div>
+            <div class="p-info">
+                <div class="p-name">${p.name}${p.isAI ? ' <small style="font-size:10px;color:#64748b">AI</small>' : ''}</div>
+                <div class="p-sub">已到家 ${p.finishedPieces}/4</div>
+            </div>
+            <div class="p-pieces">${pcs}</div>
+            <div class="p-score">${p.points}分</div>
+        `;
+        box.appendChild(el);
+    });
+}
+
+// 多人模式: 座位列表 (真人 / AI 补位 / 离线)
+function renderSeats() {
+    const box = document.getElementById('players');
+    box.innerHTML = '';
+    const room = APP.room;
+    if (!room) return;
+    document.getElementById('playerTitle').textContent = `玩家 (${room.humanCount}/${room.maxPlayers})`;
+
+    room.seats.forEach(s => {
+        const el = document.createElement('div');
+        el.className = 'seat' + (s.empty ? ' empty' : '') + (s.seat === APP.mySeat ? ' me' : '');
+        const tags = [];
+        if (s.isAI) tags.push('<span class="tag ai">AI</span>');
+        if (s.seat === APP.mySeat) tags.push('<span class="tag">我</span>');
+        if (s.seat === room.seats.find(x => x.seat === s.seat)?.seat && !s.connected && !s.empty) {
+            tags.push('<span class="tag off">离线</span>');
+        }
+        el.innerHTML = `
+            <div class="st" style="background:${s.color}">${s.token}</div>
+            <div class="nm2">${s.name}${s.seat === APP.mySeat ? ' (我)' : ''}</div>
+            ${tags.join('')}
+        `;
+        box.appendChild(el);
+    });
+}
+
+function renderLog(d) {
+    const box = document.getElementById('log');
+    const items = (d.log || []).slice(-30).reverse();
+    box.innerHTML = items.map(e => `<div class="log-item ${e.kind}">${e.text}</div>`).join('')
+        || '<div class="log-item">暂无记录</div>';
+}
+
+function updateControls() {
+    const rollBtn = document.getElementById('rollBtn');
+    const startBtn = document.getElementById('startBtn');
+    const d = APP.data;
+
+    if (APP.mode === 'multi') {
+        const room = APP.room;
+        const playing = room && room.status === 'PLAYING';
+        // 房主在等待阶段显示开始按钮
+        if (room && room.status === 'WAITING' && APP.isHost) {
+            startBtn.classList.remove('hide');
+            rollBtn.classList.add('hide');
+        } else {
+            startBtn.classList.add('hide');
+            rollBtn.classList.remove('hide');
+        }
+
+        if (!d || !playing || d.finished) {
+            rollBtn.disabled = true;
+            rollBtn.textContent = d && d.finished ? '已结束' : '等待开局';
+        } else {
+            const myTurn = d.turn === APP.mySeat;
+            rollBtn.disabled = !myTurn || d.pendingRoll !== null;
+            const nm = d.players[d.turn]?.name || '';
+            rollBtn.textContent = myTurn ? '掷骰子' : `${nm} 思考中…`;
+        }
+        return;
+    }
+
+    // 单人模式
+    if (!d) {
+        rollBtn.disabled = true;
+        rollBtn.textContent = '掷骰子';
+        return;
+    }
+    const cur = d.players[d.turn];
+    const myTurn = !d.finished && cur && !cur.isAI;
+    rollBtn.disabled = !myTurn || d.pendingRoll !== null;
+    rollBtn.textContent = d.finished ? '已结束' : (myTurn ? '掷骰子' : `${cur ? cur.name : ''} 思考中…`);
+
+    // 胜负
+    if (d.finished && d.winner !== null) {
+        const w = d.players[d.winner];
+        document.getElementById('ovTitle').textContent = '🏆 游戏结束';
+        document.getElementById('ovMsg').innerHTML =
+            `<b style="color:${w.color}">${w.name}</b> 全部棋子抵达终点!<br>本局共 ${d.turnCount} 回合`;
+        document.getElementById('overlay').classList.add('show');
+        beep(880, 0.3, 'triangle', 0.1);
+        setTimeout(() => beep(1180, 0.4, 'triangle', 0.08), 200);
+    }
+}
+
+function setHint(txt) { document.getElementById('hint').innerHTML = txt; }
+function closeOverlay() { document.getElementById('overlay').classList.remove('show'); }
+
+// ─────────────── 启动 ───────────────
+(function init() {
+    const saved = localStorage.getItem('fc_nickname');
+    if (saved) document.getElementById('nickname').value = saved;
+    document.getElementById('nickname').addEventListener('blur', () => {
+        localStorage.setItem('fc_nickname', document.getElementById('nickname').value || '');
+    });
+    setMode('single');
+    setCount(4);
+})();
+</script>
+</body>
+</html>
