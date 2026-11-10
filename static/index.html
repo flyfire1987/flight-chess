@@ -179,95 +179,62 @@
     .err { color: #f87171; font-size: 13px; margin-top: 10px; min-height: 18px; text-align: center; }
     .ok { color: #4ade80; font-size: 13px; margin-top: 10px; min-height: 18px; text-align: center; }
 
-    /* ─────────────── 棋盘 ─────────────── */
+    /* ─────────────── 棋盘 (经典四色 白底黑线) ─────────────── */
     #board {
         position: relative; width: 100%; aspect-ratio: 1 / 1;
         max-width: 720px; margin: 0 auto;
-        background:
-            radial-gradient(ellipse at 50% 45%, rgba(255,255,255,.10), transparent 65%),
-            repeating-linear-gradient(45deg, rgba(255,255,255,.025) 0 4px, transparent 4px 9px),
-            var(--felt);
-        border: 6px solid var(--wood-2);
-        border-radius: 10px;
+        background: #ffffff;
+        border: 4px solid #1a1a1a;
+        border-radius: 3px;
         overflow: hidden;
-        box-shadow:
-            0 10px 26px rgba(40,20,5,.55),
-            0 0 0 2px rgba(255,255,255,.12) inset,
-            0 0 34px rgba(0,0,0,.35) inset;
+        box-shadow: 0 8px 22px rgba(0,0,0,.45), 0 0 0 1px rgba(0,0,0,.6);
     }
-    /* 跑道格: 经典立体浮雕米色 */
+    /* 跑道格: 白底 + 黑线 */
     .cell {
-        position: absolute; border-radius: 4px;
-        background: linear-gradient(180deg, var(--cell-hi) 0%, var(--cell) 45%, var(--cell-lo) 100%);
+        position: absolute; border-radius: 1px;
+        background: #ffffff;
         display: flex; align-items: center; justify-content: center;
-        font-size: 11px; color: #8a6a3a; font-weight: 700;
-        border: 1px solid var(--cell-edge);
-        box-shadow:
-            inset 0 1.5px 0 rgba(255,255,255,.95),
-            inset 0 -2px 3px rgba(120,85,45,.35),
-            0 1px 2px rgba(40,25,10,.45);
+        font-size: 11px; color: #1a1a1a; font-weight: 700;
+        border: 1.5px solid #1a1a1a;
+        box-sizing: border-box;
     }
-    .cell.start {
-        background: linear-gradient(180deg, #fff8d8, #f0cf6e);
-        border-color: #b98f2e; color: #8a6410;
-        box-shadow: inset 0 1.5px 0 rgba(255,255,255,.95), inset 0 -2px 3px rgba(150,110,20,.4), 0 0 8px rgba(255,215,120,.5);
+    .cell.start::after {
+        content: ''; position: absolute;
+        width: 26%; height: 26%; border-radius: 50%;
+        background: rgba(255,255,255,.92);
+        box-shadow: 0 0 0 1.5px rgba(0,0,0,.55);
     }
-    /* 跑道格: 白底为主, 彩色格断续分布 (对照经典棋盘) */
-    .cell.plain {
-        background: linear-gradient(180deg, #ffffff, #e9e9e9);
-        border-color: #b9b9b9; color: #8a8a8a;
+    .cell .glyph { font-size: 12px; font-weight: 800; }
+    /* 机场 L 形 (画在跑道下方) */
+    .airport {
+        position: absolute; border-radius: 1px;
+        border: 1.5px solid #1a1a1a;
+        box-sizing: border-box;
+        z-index: 0;
     }
-    .cell.c0 {
-        background: linear-gradient(180deg, #ff8f88, #d0342c);
-        border-color: #9c2a24; color: #fff;
-    }
-    .cell.c1 {
-        background: linear-gradient(180deg, #6fa3dc, #1f5fa8);
-        border-color: #164a86; color: #fff;
-    }
-    .cell.c2 {
-        background: linear-gradient(180deg, #f5cf4e, #d9a406);
-        border-color: #a97f05; color: #4a3a00;
-    }
-    .cell.c3 {
-        background: linear-gradient(180deg, #74c486, #2f8b45);
-        border-color: #256e37; color: #fff;
-    }
-    .cell.start.c0 { border-color: #d0342c; }
-    .cell.start.c1 { border-color: #1f5fa8; }
-    .cell.start.c2 { border-color: #c99a06; }
-    .cell.start.c3 { border-color: #2f8b45; }
-    .cell.entrance { border-width: 2.5px; }
-    .cell.home {
-        background: linear-gradient(180deg, #ffffff, #efdfc0);
-        box-shadow: inset 0 1.5px 0 rgba(255,255,255,.95), inset 0 -2px 3px rgba(120,85,45,.3), 0 1px 2px rgba(40,25,10,.4);
-    }
-    .cell .glyph { font-size: 13px; text-shadow: 0 1px 0 rgba(255,255,255,.7); }
-    /* 中心终点圆盘 */
-    .center-badge {
-        position: absolute; border-radius: 50%;
-        background: radial-gradient(circle at 38% 32%, #fffdf2, #e8cf9c 62%, #c9a768);
-        border: 3px solid var(--wood-2);
-        display: flex; align-items: center; justify-content: center;
-        font-size: 15px; font-weight: 800; color: #7a4a1e;
-        box-shadow: 0 3px 8px rgba(30,15,5,.55), inset 0 2px 4px rgba(255,255,255,.9);
-        text-shadow: 0 1px 0 rgba(255,255,255,.8);
-        z-index: 1;
-    }
-    /* 角落机场停机坪: 4 个大圆角实心块 (对照经典棋盘) */
+    /* 停机坪 2x2 (白色) */
     .hangar {
-        position: absolute; border-radius: 7px;
-        background: linear-gradient(180deg, rgba(255,255,255,.30), rgba(0,0,0,.10));
-        border: 2px solid rgba(255,255,255,.55);
-        box-shadow: inset 0 2px 5px rgba(255,255,255,.35), 0 2px 5px rgba(0,0,0,.35);
+        position: absolute; border-radius: 1px;
+        background: #ffffff;
+        border: 1.5px solid #1a1a1a;
+        box-sizing: border-box;
         z-index: 1;
     }
     /* 终点道大格 */
     .cell.bigpath {
-        border-radius: 6px;
-        box-shadow: inset 0 2px 0 rgba(255,255,255,.95), inset 0 -3px 5px rgba(120,85,45,.30), 0 2px 4px rgba(40,25,10,.45);
+        border-radius: 1px;
+        z-index: 2;
     }
-
+    /* 中心终点圆盘 */
+    .center-badge {
+        position: absolute; border-radius: 50%;
+        background: radial-gradient(circle at 40% 34%, #ffffff, #f2f2f2 70%, #dcdcdc);
+        border: 2.5px solid #1a1a1a;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 17px; font-weight: 800; color: #1a1a1a;
+        box-shadow: 0 2px 6px rgba(0,0,0,.35);
+        z-index: 3;
+    }
     /* 棋子: 经典飞机造型 */
     .piece {
         position: absolute; border-radius: 50%;
@@ -763,7 +730,7 @@ function onOverlayBtn() {
 }
 
 // ─────────────── 渲染 ───────────────
-const COLORS = ['#e23a3a', '#1565c0', '#fbc02d', '#2e7d32'];
+const COLORS = ['#d03020', '#0080c0', '#f0f040', '#009040'];
 const boardEl = document.getElementById('board');
 const BOARD_N = 15;
 
@@ -789,42 +756,53 @@ const GRID = (() => {
 //     终点道格 PATH  = 43/378 归一化 (大块)
 //   四角机场: 绿左上 / 红右上 / 蓝左下 / 黄右下
 // ─────────────────────────────────────────────────────────────
-const SLOT_LAYOUT = {
-    0: { name: '红', corner: '右上', start: [14, 0],  wait: [[12, 1], [13, 1], [12, 2], [13, 2]],
-         home: [[8, 7], [9, 7], [10, 7], [11, 7], [12, 7], [13, 7]] },
-    1: { name: '蓝', corner: '左下', start: [0, 14],  wait: [[1, 12], [2, 12], [1, 13], [2, 13]],
-         home: [[7, 8], [7, 9], [7, 10], [7, 11], [7, 12], [7, 13]] },
-    2: { name: '黄', corner: '右下', start: [14, 14], wait: [[12, 12], [13, 12], [12, 13], [13, 13]],
-         home: [[7, 1], [7, 2], [7, 3], [7, 4], [7, 5], [7, 6]] },
-    3: { name: '绿', corner: '左上', start: [0, 0],   wait: [[1, 1], [2, 1], [1, 2], [2, 2]],
-         home: [[6, 7], [5, 7], [4, 7], [3, 7], [2, 7], [1, 7]] },
-};
+// ─────────────────────────────────────────────────────────────
+// 棋盘几何全部由后端 board 数据驱动 (board.json v2.0)
+//   board.tiles[i].colorIndex : -1=白 0红 1蓝 2黄 3绿
+//   board.slots[i]            : 机场L形 / 停机坪 / 终点道 / 起点 / 入口
+//   board.homePaths[i]        : [入口跑道号, 终点道第1格编码, ...]
+//   15x15 逻辑格, 外圈 52 格跑道, 顺时针: 顶边→右边→底边→左边
+//   每家: 机场L形(5格) + 停机坪2x2(4格) 完整占满 3x3 角块
+//   起点 = 顺时针方向上距本家角块 2 格处 (即 L 形尖端)
+// ─────────────────────────────────────────────────────────────
+const SLOT_NAMES = ['红', '蓝', '黄', '绿'];
 
-// 跑道格 -> 所属 slot (按 lane 分段)
-const LANE_SLOT = [3, 0, 2, 1];
+// 跑道坐标 -> 跑道序号
+const TRACK_AT = {};
+GRID.forEach((g, i) => { TRACK_AT[g[0] + ',' + g[1]] = i; });
 
-// 终点道 (按 slot, 6 格)
-const HOME_LAYOUTS = [0, 1, 2, 3].map(s => SLOT_LAYOUT[s].home);
-
-// 视觉尺寸 (归一化到棋盘边长)
-const SZ = { track: 21/378, park: 31/378, path: 43/378 };
-
-// 跑道 52 格的"断续彩色"图案 (对照参考图实测: 每色赛段内白格与彩格交替出现)
-// 值: 0=白(底色) 1=该 lane 所属 slot 的彩色 2=浅色格
-// 参考图实测上边 (绿 lane) 呈 GGWYBGRRYBGRRR 的彩色断续
-const TRACK_PATTERN = [
-    // lane0 顶边 (绿, 13格)
-    'W','G','W','Y','G','R','R','Y','B','G','R','R','G',
-    // lane1 右边 (红, 13格)
-    'R','R','W','B','G','R','Y','W','G','B','R','Y','Y',
-    // lane2 底边 (黄, 13格)
-    'Y','W','G','G','B','B','B','B','W','B','Y','R','G',
-    // lane3 左边 (蓝, 13格)
-    'B','B','B','W','Y','R','G','B','G','R','W','Y','B',
+// 兜底几何 (后端未下发 board.slots 时使用)
+const FALLBACK_SLOTS = [
+  { name:'红', color:'#d03020', corner:'右上', start:[14,2], entrance:[7,0],
+    airport:[[12,0],[12,1],[12,2],[13,2],[14,2]], wait:[[13,0],[14,0],[13,1],[14,1]],
+    home:[[7,1],[7,2],[7,3],[7,4],[7,5],[7,6]] },
+  { name:'蓝', color:'#0080c0', corner:'左下', start:[0,12], entrance:[7,14],
+    airport:[[0,12],[1,12],[2,12],[2,13],[2,14]], wait:[[0,13],[1,13],[0,14],[1,14]],
+    home:[[7,13],[7,12],[7,11],[7,10],[7,9],[7,8]] },
+  { name:'黄', color:'#f0f040', corner:'右下', start:[12,14], entrance:[14,7],
+    airport:[[12,12],[13,12],[14,12],[12,13],[12,14]], wait:[[13,13],[14,13],[13,14],[14,14]],
+    home:[[13,7],[12,7],[11,7],[10,7],[9,7],[8,7]] },
+  { name:'绿', color:'#009040', corner:'左上', start:[2,0], entrance:[0,7],
+    airport:[[2,0],[2,1],[2,2],[1,2],[0,2]], wait:[[1,0],[0,0],[1,1],[0,1]],
+    home:[[1,7],[2,7],[3,7],[4,7],[5,7],[6,7]] },
 ];
 
-// 图案字母 -> slot 索引 (R=0红 B=1蓝 Y=2黄 G=3绿 W=白)
-const PAT_SLOT = { R: 0, B: 1, Y: 2, G: 3 };
+// 从后端构造每家几何
+function buildGeo(board) {
+  if (!board.slots || board.slots.length !== 4) return FALLBACK_SLOTS;
+  return board.slots.map(s => ({
+    name: s.name, color: s.color, corner: s.corner,
+    start: s.start, entrance: s.entrance,
+    airport: (s.airport || []).map(p => p.slice()),
+    wait:    (s.wait    || []).map(p => p.slice()),
+    home:    (s.home    || []).map(p => p.slice()),
+  }));
+}
+
+// 文字墨色: 黄色底用黑字
+function inkFor(c) {
+  return (c === '#f0f040' || c === '#fbc02d' || c === '#d9a406') ? '#1a1a1a' : '#ffffff';
+}
 
 // 飞机棋子图标
 const PLANE_ICON = '✈';
@@ -862,98 +840,105 @@ function render() {
 function renderBoard(d) {
     const board = d.board;
     const total = board.tileCount;
+    const GEO = buildGeo(board);
     boardEl.innerHTML = '';
     const unit = 100 / BOARD_N;
 
-    // 4 个机场停机坪: 每色 4 个独立大圆角块 (对照经典棋盘)
-    d.players.forEach((p, pi) => {
-        const L = SLOT_LAYOUT[pi];
-        if (!L) return;
-        L.wait.forEach(w => {
+    // ── 机场 L 形 + 停机坪 (画在跑道下层) ──
+    GEO.forEach((g, si) => {
+        // L 形机场: 由 5 格拼成一个 L, 用外接矩形 + 内部遮罩实现
+        const ap = g.airport.map(p => p.slice());
+        if (ap.length >= 5) {
+            // 找出 3x3 角块原点 (机场内不在同一行/列的两个端点)
+            const cols = ap.map(p => p[0]), rows = ap.map(p => p[1]);
+            const minC = Math.min(...cols), maxC = Math.max(...cols);
+            const minR = Math.min(...rows), maxR = Math.max(...rows);
+            // L 形 = 3x3 去掉一个 2x2 缺角
+            // 用 2 个矩形拼: 竖条(minC..minC+1? ) —— 直接用格子集合画更稳
+            ap.forEach((cell, k) => {
+                const el = document.createElement('div');
+                el.className = 'airport';
+                el.style.left = (cell[0] * unit) + '%';
+                el.style.top = (cell[1] * unit) + '%';
+                el.style.width = unit + '%';
+                el.style.height = unit + '%';
+                el.style.background = g.color;
+                el.style.zIndex = String(k);
+                boardEl.appendChild(el);
+            });
+        }
+        // 停机坪 2x2 白色
+        g.wait.forEach(cell => {
             const el = document.createElement('div');
             el.className = 'hangar';
-            el.style.left = ((w[0] + 0.5) * unit - SZ.park * unit / 2) + '%';
-            el.style.top = ((w[1] + 0.5) * unit - SZ.park * unit / 2) + '%';
-            el.style.width = (SZ.park * unit) + '%';
-            el.style.height = (SZ.park * unit) + '%';
-            el.style.borderColor = p.color;
-            el.style.background = 'linear-gradient(180deg, ' + p.color + 'dd, ' + p.color + '99)';
+            el.style.left = (cell[0] * unit) + '%';
+            el.style.top = (cell[1] * unit) + '%';
+            el.style.width = unit + '%';
+            el.style.height = unit + '%';
             boardEl.appendChild(el);
         });
     });
 
-    // 跑道格
+    // ── 跑道格 (后端 colorIndex 驱动) ──
+    const tiles = board.tiles || [];
     for (let i = 0; i < total; i++) {
-        const tile = board.tiles[i];
+        const tile = tiles[i] || { id: i };
         const [c, r] = GRID[i];
         const el = document.createElement('div');
         el.className = 'cell';
-        let extra = '';
-        if (tile.type === 'jump') { el.classList.add('jump'); extra = '⤴'; }
-        else if (tile.type === 'fly') { el.classList.add('fly'); extra = '✈'; }
-        else if (tile.type === 'start') { el.classList.add('start'); extra = '★'; }
-        if (board.homeEntrances.includes(i)) {
-            el.classList.add('entrance');
-            el.style.borderColor = COLORS[board.homeEntrances.indexOf(i)];
+        const ci = tile.colorIndex !== undefined ? tile.colorIndex : -1;
+        if (ci >= 0) {
+            const col = COLORS[ci];
+            el.style.background = col;
+            el.style.color = inkFor(col);
+            el.dataset.slot = String(ci);
         }
-        // 起点格: 标记所属 slot
-        for (let si = 0; si < 4; si++) {
-            const L = SLOT_LAYOUT[si];
-            if (L && L.start[0] === c && L.start[1] === r) el.dataset.slot = String(si);
+        if (tile.type === 'start') el.classList.add('start');
+        if (board.homeEntrances && board.homeEntrances.includes(i)) {
+            el.classList.add('entrance');
+            el.style.boxShadow = 'inset 0 0 0 2px ' + COLORS[board.homeEntrances.indexOf(i)];
         }
         el.style.left = (c * unit) + '%';
         el.style.top = (r * unit) + '%';
         el.style.width = unit + '%';
         el.style.height = unit + '%';
-        // 断续彩色: 按 TRACK_PATTERN 决定该格是白底还是彩色
-        const lane = tile.lane !== undefined ? tile.lane : Math.floor(i / 13);
-        const pat = TRACK_PATTERN[i] || 'W';
-        let ci = -1;
-        let cname = '白';
-        if (pat !== 'W') {
-            ci = PAT_SLOT[pat] !== undefined ? PAT_SLOT[pat] : (lane % 4);
-            el.classList.add('c' + ci);
-            cname = ['红', '蓝', '黄', '绿'][ci] || '';
-        } else {
-            el.classList.add('plain');
-        }
-        el.innerHTML = extra ? `<span class="glyph">${extra}</span>` : '';
-        el.title = `格 ${i} · ${cname}${tile.type === 'start' ? ' · 起点' : ''}
-落到同色格自动往前跳 4 格 (只跳一次)`;
+        const cname = ci >= 0 ? SLOT_NAMES[ci] : '白';
+        el.title = `格 ${i} · ${cname}${tile.type === 'start' ? ' · 起点' : ''}\n落到同色格自动往前跳 4 格 (只跳一次)`;
         boardEl.appendChild(el);
     }
 
-    // 终点道: 只画实际存在的玩家
-    d.players.forEach((p, pi) => {
-        const lane = HOME_LAYOUTS[pi];
-        if (!lane) return;
-        lane.forEach(([c, r], li) => {
+    // ── 终点道 (每家 6 格, 向中心汇聚) ──
+    GEO.forEach((g, pi) => {
+        const p = d.players[pi];
+        const col = p && p.color ? p.color : g.color;
+        (g.home || []).forEach((cell, li) => {
             const el = document.createElement('div');
-            el.className = 'cell home bigpath';
-            const bw = SZ.path * unit;
-            el.style.left = ((c + 0.5) * unit - bw / 2) + '%';
-            el.style.top = ((r + 0.5) * unit - bw / 2) + '%';
-            el.style.width = bw + '%';
-            el.style.height = bw + '%';
-            el.style.borderColor = p.color;
-            el.innerHTML = `<span class="glyph" style="color:${p.color}">${li + 1}</span>`;
-            el.title = `${p.name} 终点道第 ${li + 1} 格`;
+            el.className = 'cell bigpath';
+            el.style.left = (cell[0] * unit) + '%';
+            el.style.top = (cell[1] * unit) + '%';
+            el.style.width = unit + '%';
+            el.style.height = unit + '%';
+            el.style.background = col;
+            el.style.color = inkFor(col);
+            el.innerHTML = `<span class="glyph">${li + 1}</span>`;
+            el.title = `${g.name} 终点道第 ${li + 1} 格`;
             boardEl.appendChild(el);
         });
     });
 
-    // 中心终点圆盘 (经典: 4 条终点道汇聚处)
+    // ── 中心终点圆盘 ──
     const cb = document.createElement('div');
     cb.className = 'center-badge';
-    cb.style.left = (6.1 * unit) + '%';
-    cb.style.top = (6.1 * unit) + '%';
-    cb.style.width = (2.8 * unit) + '%';
-    cb.style.height = (2.8 * unit) + '%';
+    const cs = 2.4 * unit;
+    cb.style.left = ((7 - 1.2) * unit) + '%';
+    cb.style.top = ((7 - 1.2) * unit) + '%';
+    cb.style.width = cs + '%';
+    cb.style.height = cs + '%';
     cb.textContent = '🏁';
     cb.title = '终点';
     boardEl.appendChild(cb);
 
-    // 棋子 (仅已起飞的, 待起飞的单独画在起点)
+    // ── 棋子: 在跑道上的 ──
     const perCell = {};
     d.players.forEach(p => p.pieces.forEach(pc => {
         if (pc.finished || pc.waiting) return;
@@ -964,15 +949,13 @@ function renderBoard(d) {
         const arr = perCell[key];
         const pos = Number(key);
         let [c, r] = GRID[pos] || [0, 0];
-        // 终点跑道: 编号每色独立 (52~75), 用后端下发的 homePaths 反查
-        const pi = d.players.findIndex(p => p.pieces.some(x => x.id === arr[0].pc.id));
-        const paths = board.homePaths || [];
-        const ownerPath = pi >= 0 ? paths[pi] : null;
-        if (ownerPath && ownerPath.length) {
-            const idx = ownerPath.indexOf(pos);
-            if (idx >= 1) {
-                const lane = HOME_LAYOUTS[pi];
-                if (lane && lane[idx - 1]) [c, r] = lane[idx - 1];
+        // 终点道编码 (52+): 反查该玩家 homePath
+        if (pos >= total) {
+            const pi = d.players.findIndex(p => p.pieces.some(x => x.id === arr[0].pc.id));
+            const path = (board.homePaths || [])[pi] || [];
+            const idx = path.indexOf(pos);
+            if (idx >= 1 && GEO[pi] && GEO[pi].home[idx - 1]) {
+                [c, r] = GEO[pi].home[idx - 1];
             }
         }
         arr.forEach((it, i) => {
@@ -983,9 +966,9 @@ function renderBoard(d) {
             el.innerHTML = pieceInner(it.p);
             el.style.background = it.p.color;
             el.style.color = '#fff';
-            const off = (i - (arr.length - 1) / 2) * 0.32;
-            el.style.left = `calc(${c * unit}% + ${off * unit}% + 3%)`;
-            el.style.top = `calc(${r * unit}% + 6%)`;
+            const off = (i - (arr.length - 1) / 2) * 0.3;
+            el.style.left = `calc(${c * unit}% + ${off * unit}% + ${unit * 0.19}%)`;
+            el.style.top = `calc(${r * unit}% + ${unit * 0.19}%)`;
             el.style.width = (unit * 0.62) + '%';
             el.style.height = (unit * 0.62) + '%';
             el.title = `${it.p.name} 棋子${it.pc.index + 1}`;
@@ -994,19 +977,18 @@ function renderBoard(d) {
         });
     });
 
-    // 起点待起飞 / 被撞飞: 各方棋子回到自己角落的 2x2 待命区
+    // ── 待起飞 / 被撞飞: 回到本家停机坪 ──
     d.players.forEach((p, pi) => {
         const wait = p.pieces.filter(pc => pc.waiting);
         if (!wait.length) return;
-        const SL = SLOT_LAYOUT[pi];
-        const area = (SL && SL.wait) || SLOT_LAYOUT[0].wait;
+        const area = (GEO[pi] && GEO[pi].wait) || FALLBACK_SLOTS[0].wait;
         wait.forEach((pc, i) => {
             const slot = area[i] || area[0];
             const el = document.createElement('div');
             el.className = 'piece';
             const selectable = APP.needChoice && APP.movable.includes(pc.id);
             if (selectable) el.classList.add('selectable');
-            else el.style.opacity = '.7';
+            else el.style.opacity = '.75';
             el.innerHTML = pieceInner(p);
             el.style.background = p.color;
             el.style.color = '#fff';
@@ -1020,7 +1002,7 @@ function renderBoard(d) {
         });
     });
 
-    // 已到终点
+    // ── 已到终点 ──
     const done = {};
     d.players.forEach(p => p.pieces.forEach(pc => {
         if (pc.finished) done[p.id] = (done[p.id] || 0) + 1;

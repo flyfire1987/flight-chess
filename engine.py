@@ -290,6 +290,18 @@ class FlightChessGame:
         remaining = roll
         my_color = piece.owner      # 玩家索引 == 颜色索引 (红0 蓝1 黄2 绿3)
 
+        def enter_home(rem: int) -> int:
+            """从入口格进入本色终点跑道。rem = 剩余步数。"""
+            if rem <= 0:
+                return entrance
+            if rem >= len(path) - 1:
+                return FINISHED_POS[owner]
+            return path[rem]
+
+        # 已在入口格 (上一回合正好停在入口) → 本回合直接进入终点跑道
+        if cur == entrance:
+            return enter_home(remaining)
+
         # 逐格推进; 落到与自己同色的格子 → 自动往前飞 FLY_STEPS 格
         while remaining > 0:
             nxt = cur + 1
@@ -297,6 +309,12 @@ class FlightChessGame:
                 nxt = 0
             cur = nxt
             remaining -= 1
+
+            # 落到入口格 → 优先进入终点跑道
+            #   注: 入口格本身是本家颜色, 但入口判定优先于同色跳跃,
+            #   否则棋子每次到入口都被跳过 4 格, 永远进不了终点道。
+            if cur == entrance:
+                return enter_home(remaining)
 
             # 同色格 → 跳 4 格 (只跳一次, 不连锁); 白底格(-1)不触发
             if FLY_ENABLED and TILE_COLOR_IDX[cur] >= 0 and TILE_COLOR_IDX[cur] == my_color:
@@ -306,20 +324,10 @@ class FlightChessGame:
                     if n2 >= TILE_COUNT:
                         n2 = 0
                     cur = n2
-                # 飞跃后可能正好落在入口格 → 若还有剩余步数则进跑道
-                if cur == entrance and remaining > 0:
-                    return path[1] if len(path) > 1 else cur
+                # 飞跃后正好落在入口格 → 按入口规则处理
+                if cur == entrance:
+                    return enter_home(remaining)
                 continue
-
-            # 落到入口格
-            if cur == entrance:
-                if remaining == 0:
-                    return entrance      # 正好停在入口格, 下回合再进跑道
-                # 还有剩余步数 → 进入终点跑道
-                step = remaining
-                if step >= len(path) - 1:
-                    return FINISHED_POS[owner]
-                return path[step]
 
         return cur
 
@@ -510,6 +518,7 @@ class FlightChessGame:
                 "colorNames": COLOR_NAMES,
                 "flyRule": {"enabled": FLY_ENABLED, "steps": FLY_STEPS},
                 "tiles": TILES,
+                "slots": BOARD.get("slots", []),
             },
             "rules": GAME_CFG,
             "log": [
