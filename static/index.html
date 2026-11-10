@@ -225,6 +225,11 @@
         border-radius: 1px;
         z-index: 2;
     }
+    /* 飞行箭头 */
+    .flight-arcs {
+        position: absolute; left: 0; top: 0; width: 100%; height: 100%;
+        pointer-events: none; z-index: 1;
+    }
     /* 中心终点圆盘 */
     .center-badge {
         position: absolute; border-radius: 50%;
@@ -903,8 +908,49 @@ function renderBoard(d) {
         el.style.width = unit + '%';
         el.style.height = unit + '%';
         const cname = ci >= 0 ? SLOT_NAMES[ci] : '白';
-        el.title = `格 ${i} · ${cname}${tile.type === 'start' ? ' · 起点' : ''}\n落到同色格自动往前跳 4 格 (只跳一次)`;
+        el.title = `格 ${i} · ${cname}${tile.type === 'start' ? ' · 起点' : ''}\n落到同色格 → 跳到前方下一个同色格 (只跳一次)\n落到飞行起点 → 沿红箭头飞向对面, 飞后再继续跳`;
         boardEl.appendChild(el);
+    }
+
+    // ── 飞行箭头 (红色虚线, 数据驱动 board.flightPaths) ──
+    const fpaths = board.flightPaths || {};
+    if (Object.keys(fpaths).length) {
+        const NS = 'http://www.w3.org/2000/svg';
+        const svg = document.createElementNS(NS, 'svg');
+        svg.setAttribute('class', 'flight-arcs');
+        svg.setAttribute('viewBox', '0 0 100 100');
+        svg.setAttribute('preserveAspectRatio', 'none');
+        const defs = document.createElementNS(NS, 'defs');
+        const mk = document.createElementNS(NS, 'marker');
+        mk.setAttribute('id', 'fhead');
+        mk.setAttribute('markerWidth', '4');
+        mk.setAttribute('markerHeight', '4');
+        mk.setAttribute('refX', '3');
+        mk.setAttribute('refY', '2');
+        mk.setAttribute('orient', 'auto');
+        const tri = document.createElementNS(NS, 'path');
+        tri.setAttribute('d', 'M0,0 L4,2 L0,4 z');
+        tri.setAttribute('fill', '#d03020');
+        mk.appendChild(tri);
+        defs.appendChild(mk);
+        svg.appendChild(defs);
+        Object.keys(fpaths).forEach(k => {
+            const p = fpaths[k];
+            const a = GRID[p.from], z = GRID[p.to];
+            if (!a || !z) return;
+            const x1 = (a[0] + 0.5) * (100 / 15), y1 = (a[1] + 0.5) * (100 / 15);
+            const x2 = (z[0] + 0.5) * (100 / 15), y2 = (z[1] + 0.5) * (100 / 15);
+            // 直线 (棋盘对角), 与参考图的红色箭头一致
+            const line = document.createElementNS(NS, 'line');
+            line.setAttribute('x1', x1); line.setAttribute('y1', y1);
+            line.setAttribute('x2', x2); line.setAttribute('y2', y2);
+            line.setAttribute('stroke', '#d03020');
+            line.setAttribute('stroke-width', '0.45');
+            line.setAttribute('stroke-dasharray', '2 1.2');
+            line.setAttribute('marker-end', 'url(#fhead)');
+            svg.appendChild(line);
+        });
+        boardEl.appendChild(svg);
     }
 
     // ── 终点道 (每家 6 格, 向中心汇聚) ──
@@ -951,11 +997,12 @@ function renderBoard(d) {
         let [c, r] = GRID[pos] || [0, 0];
         // 终点道编码 (52+): 反查该玩家 homePath
         if (pos >= total) {
-            const pi = d.players.findIndex(p => p.pieces.some(x => x.id === arr[0].pc.id));
-            const path = (board.homePaths || [])[pi] || [];
+            const pl = d.players.find(p => p.pieces.some(x => x.id === arr[0].pc.id));
+            const ci = pl ? (pl.colorIndex != null ? pl.colorIndex : 0) : 0;
+            const path = (board.homePaths || [])[ci] || [];
             const idx = path.indexOf(pos);
-            if (idx >= 1 && GEO[pi] && GEO[pi].home[idx - 1]) {
-                [c, r] = GEO[pi].home[idx - 1];
+            if (idx >= 1 && GEO[ci] && GEO[ci].home[idx - 1]) {
+                [c, r] = GEO[ci].home[idx - 1];
             }
         }
         arr.forEach((it, i) => {
@@ -981,7 +1028,8 @@ function renderBoard(d) {
     d.players.forEach((p, pi) => {
         const wait = p.pieces.filter(pc => pc.waiting);
         if (!wait.length) return;
-        const area = (GEO[pi] && GEO[pi].wait) || FALLBACK_SLOTS[0].wait;
+        const ci = p.colorIndex != null ? p.colorIndex : pi;
+        const area = (GEO[ci] && GEO[ci].wait) || FALLBACK_SLOTS[0].wait;
         wait.forEach((pc, i) => {
             const slot = area[i] || area[0];
             const el = document.createElement('div');

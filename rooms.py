@@ -208,10 +208,10 @@ def _ai_choose_piece(game: FlightChessGame, player, roll: int,
             score += 500 * len(pv["captured"])
         if piece.in_home_stretch:
             score += 120
-        _path = game._home_path(piece.owner)
+        _path = game._home_path(piece.color)
         if _path[1] <= to <= _path[-1]:
             score += 80
-        entrance = START_CELLS[piece.owner]
+        entrance = START_CELLS[piece.color]
         dist = (to - entrance) % TILE_COUNT
         score += (TILE_COUNT - dist) * 1.0
         if "takeoff" in pv.get("events", []):

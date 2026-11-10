@@ -11,6 +11,60 @@
 - 配置与棋盘数据：`data/`（JSON，与代码彻底分离）
 - 存储：内存单局态（进程重启清空）
 
+## 📋 官方规则实现 (2026-11-10 版)
+
+引擎已按官方 10 条规则重写，`data/board.json` + `data/config.json` 驱动，前后端共用同一份数据。
+
+| # | 规则 | 实现 |
+|---|---|---|
+| 1 | 比赛人数 2~4 人 | `GameError` 拦截 <2 或 >4；单人模式 `count` 可选 2/3/4 |
+| 2 | 任选已起飞棋子；5/6 起飞；无子可动盖轮 | `_movable_pieces()` 返回全部可动棋子；`_advance_turn()` 盖轮跳过 |
+| 3 | 5/6 点从基地起飞进停机坪 | `START_CELLS[color]`，起飞点按颜色区分 |
+| 4 | 精确抵达终点，超出回退 | `_advance_home_stretch()` / `_enter_home()`，超额按 `bounce` 事件回退 |
+| 5a | 落在同色格 → 跳到前方下一个同色格 | `board.json > nextSame`（28 条），**只跳一次** |
+| 5b | 落在飞行起点 → 沿红箭头飞向对面，飞后再继续跳 | `board.json > flightMap` / `flightPaths` |
+| 6a | 普通行棋路过敌方不撞，落到同一格才撞 | `_advance_ring()` 只在落点判撞 |
+| 6b | 飞行途中经过敌方可以撞回 | `_resolve_chain()` 扫 `flightPaths.mid` |
+| 6c | 跳跃途中经过敌方不能撞回 | `_resolve_chain()` 跳跃分支不判撞 |
+| 6d | 叠子参与撞与被撞视为一颗 | 敌方整叠一起回基地 |
+| 7 | 己方棋子落同格 → 叠在一起共同行动 | `_stack_at()` 整叠同步移动 |
+| 8 | 掷 6 奖励一次，最多 3 次，先行棋再掷 | `extra_turn` 判定，`consecutive_sixes < 3` |
+| 9 | 随机选红色先手，其余按座位顺时针 | `first_seat` 随机，先手 `color_index = 0`（红） |
+| 10 | 一方 4 枚全部到终点即结束 | `all(pc.finished ...)` → `finished` + `winner` |
+
+### 棋盘关系数据 (`data/board.json`)
+
+| 字段 | 说明 |
+|---|---|
+| `nextSame[]` | 28 条 `{from,to,color}`，前方下一个同色格 |
+| `flightMap[]` | 4 条 `{from,to,owner}`，飞行起点 → 对面飞行终点 |
+| `flightPaths{}` | 每条飞行路径的 `mid[]`（途中格，供规则 6b 判撞） |
+| `jumpRule` | 跳跃模式说明 (`nextSameColor`) |
+
+当前四色飞行映射（由棋盘结构自洽推导：飞落后继续跳恰好进本家终点入口，4/4 成立）：
+
+```text
+红 15 → 47 → 跳 7    (红入口)
+蓝 41 → 21 → 跳 33   (蓝入口)
+黄 28 →  8 → 跳 20   (黄入口)
+绿  2 → 34 → 跳 46   (绿入口)
+```
+
+### 验收测试
+
+| 文件 | 覆盖 |
+|---|---|
+| `test_rules.py` | **54 条断言**，逐条覆盖 10 条规则（路过不撞/落点撞/飞行撞/跳跃不撞/叠子/掷6顺序/随机先手）|
+| `test_ai_auto.py` | 单人模式真人 10 步 + AI 接管 30 次，验 AI 不卡死 |
+| `test_fullgame.py` | 全流程对局，打到分出胜负 |
+| `test_multiplayer.py` | 联机 200 步交互 + 三类非法请求拒绝 |
+
+```bash
+python3 test_rules.py      # 54 PASS / 0 FAIL
+```
+
+> ⚠️ 改完 `engine.py` 必须先 `systemctl restart flight-chess`，否则测的是旧代码。
+> 视觉验收必须走 Caddy 公共路径 `http://127.0.0.1/flight-chess/`，直连 3500 会因静态资源路径 404 导致棋盘 0×0。
 ## 运行
 
 ```bash

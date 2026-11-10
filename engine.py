@@ -3,21 +3,28 @@
 
 纯逻辑模块, 无 Web 框架依赖, 可独立测试。
 
-规则要点:
-  - 4 色环形跑道 (每色 13 格), 外圈共用起跑格
-  - 4 枚棋子/玩家, 掷骰前进; 6 可继续掷 (最多连续 3 个 6, 第 3 个 6 惩罚)
-  - 跳跃格: 直接跳到目标格
-  - 飞跃格: 飞到对面同色出发区再前进 4 格
-  - 进终点跑道: 掷到对应点数进入本色终点道, 需精确点数抵达终点
-  - 撞机: 落到敌方棋子所在格 → 敌方被击飞回起点
-  - 起飞: 掷出 6 且起点为空可起飞 (可配置)
+按官方规则实现 (10 条):
+  1. 2~4 人; 系统随机选一位玩家先手, 其余按座位顺时针行动
+  2. 可指定任一已起飞棋子前进; 5/6 点可起飞基地棋子; 无子可动则盖轮
+  3. 5/6 点从基地起飞进入本家起飞点 (停机坪)
+  4. 必须以精确点数抵达终点, 超出则回退 (反弹)
+  5a. 落在与棋子同色的格子 -> 跳到前方下一个同色格 (数据驱动 nextSame)
+  5b. 落在飞行起点格 -> 按红色箭头飞向对面飞行终点, 再继续同色跳跃
+  6a. 普通行棋路过敌方棋子不撞回, 落到同一格才撞回
+  6b. 飞行途中经过敌方棋子可以撞回
+  6c. 跳跃途中经过敌方棋子不能撞回
+  6d. 叠子参与撞与被撞时视为一颗棋子
+  7. 己方棋子落在同一格则叠在一起共同行动
+  8. 掷 6 奖励一次额外掷骰 (最多 3 连 6), 先行棋再掷骰
+  9. 开局随机红色先手, 其余顺时针
+ 10. 一方 4 枚棋子全部抵达终点即结束
 """
 from __future__ import annotations
 
 import json
 import os
 import random
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -39,37 +46,43 @@ TILES = BOARD["tiles"]
 TILE_COUNT = len(TILES)
 HOME_ENTRANCES = BOARD["homeEntrances"]
 HOME_PATHS = BOARD["homePaths"]
-START_CELLS = BOARD["starts"]          # 各色起点格 (红0/蓝13/黄26/绿39)
-HOME_STRETCH_FIRST = min(p[1] for p in HOME_PATHS)   # 52: 终点跑道编号起点
+START_CELLS = BOARD["starts"]          # 各色起飞点格 (红15/蓝41/黄28/绿2)
+HOME_STRETCH_FIRST = min(p[1] for p in HOME_PATHS)
 FINISHED_POS = {o: p[-1] for o, p in enumerate(HOME_PATHS)}  # 各色终点位置
 
-# 棋盘格颜色索引 (0=红 1=蓝 2=黄 3=绿) —— 跑道 4 色交替
+# 棋盘格颜色索引 (0=红 1=蓝 2=黄 3=绿)
 COLOR_NAMES = ["red", "blue", "yellow", "green"]
 TILE_COLOR_IDX = [t.get("colorIndex", t["id"] % 4) for t in TILES]
 
-# 飞跃规则: 落到与棋子同色的格子 → 自动往前飞 N 格
-FLY_RULE = BOARD.get("flyRule", {})
-FLY_ENABLED = bool(FLY_RULE.get("enabled", False))
-FLY_STEPS = int(FLY_RULE.get("steps", 4))
+# ── 规则 5a: 前方下一个同色格 (数据驱动, 固定步数无法表达) ──
+NEXT_SAME: Dict[int, int] = {
+    int(e["from"]): int(e["to"]) for e in BOARD.get("nextSame", [])
+}
+# ── 规则 5b: 飞行起点 -> 对面飞行终点 ──
+FLIGHT_TO: Dict[int, int] = {
+    int(e["from"]): int(e["to"]) for e in BOARD.get("flightMap", [])
+}
+# 飞行途中经过的格子 (用于规则 6b: 飞行途中可撞回)
+FLIGHT_MID: Dict[int, List[int]] = {
+    int(k): [int(m["pos"]) for m in v.get("mid", [])]
+    for k, v in BOARD.get("flightPaths", {}).items()
+}
+JUMP_CFG = BOARD.get("jumpRule", {})
+MAX_CHAIN = int(JUMP_CFG.get("maxChain", 8))
 
 
 GAME_CFG = CONFIG["game"]
 BONUS_CFG = CONFIG["bonus"]
 
-# 起飞所需点数 (经典规则: 掷出 5 或 6 即可让飞机离开机场)
+# 起飞所需点数 (规则 3: 5 或 6)
 TAKEOFF_ROLLS = set(GAME_CFG.get("takeoffRolls", [5, 6]))
 
 LANE_COUNT = len(HOME_PATHS)
 PIECES_PER_PLAYER = GAME_CFG["piecesPerPlayer"]
 DICE_SIDES = GAME_CFG["diceSides"]
 MAX_SIXES = GAME_CFG["maxConsecutiveSixes"]
-
-# 位置语义:
-#   pos < 0                    -> 在起点待起飞 (pos = -1 - pieceIndex)
-#   0 <= pos < 52              -> 在环形跑道 (lane 0..3 共用同一圈)
-#   52 <= pos <= 75            -> 在自己颜色的终点跑道 (每色 6 格独立编号)
-#   pos == FINISHED_POS[owner] -> 已抵达终点 (每色终点位置不同)
-#   抵达终点后 pos 保持为该色终点值, 由 piece.finished 标记
+RANDOM_FIRST = bool(GAME_CFG.get("randomFirstPlayer", True))
+STACKING = bool(GAME_CFG.get("stacking", True))
 
 
 class GameError(Exception):
@@ -79,21 +92,22 @@ class GameError(Exception):
 @dataclass
 class Piece:
     """单枚棋子。"""
-    id: int                       # 全局唯一 id
-    owner: int                    # 所属玩家索引
-    index: int                    # 玩家内序号 0..3
-    pos: int                      # 见上方位置语义
+    id: int
+    owner: int
+    index: int
+    pos: int
     finished: bool = False
+    color: int = 0                 # 所属颜色索引 (0红 1蓝 2黄 3绿)
 
     @property
     def waiting(self) -> bool:
-        """是否还在起点待起飞。"""
+        """是否还在基地待起飞。"""
         return self.pos < 0
 
     @property
     def in_home_stretch(self) -> bool:
         """是否已进入本色终点跑道 (含最后一格)。"""
-        path = HOME_PATHS[self.owner]
+        path = HOME_PATHS[self.color]
         return path[1] <= self.pos <= path[-1]
 
 
@@ -103,14 +117,12 @@ class Player:
     name: str
     token: str
     color: str
+    color_index: int = 0
     pieces: List[Piece] = field(default_factory=list)
     points: int = 0
     finished_pieces: int = 0
     is_ai: bool = False
     seat: int = 0
-
-    def piece_positions(self) -> List[int]:
-        return [p.pos for p in self.pieces]
 
 
 @dataclass
@@ -118,7 +130,7 @@ class LogEntry:
     turn: int
     player: int
     text: str
-    kind: str = "info"   # info | roll | move | capture | bonus | penalty | finish
+    kind: str = "info"
     payload: Dict[str, Any] = field(default_factory=dict)
 
 
@@ -131,32 +143,46 @@ class FlightChessGame:
         if len(players) > LANE_COUNT:
             raise GameError(f"最多 {LANE_COUNT} 名玩家")
         self.rng = random.Random(seed if seed is not None else random.randint(0, 10**9))
+        n = len(players)
+
+        # ── 规则 9: 随机选一位玩家作为先手, 其余按位置顺时针 ──
+        self.first_seat = self.rng.randrange(n) if RANDOM_FIRST else 0
+        # 行动顺序: 从先手开始按座位顺时针
+        self.order: List[int] = [(self.first_seat + k) % n for k in range(n)]
+
         self.players: List[Player] = []
-        self.turn = 0
+        self.turn = self.first_seat
         self.turn_count = 0
         self.log: List[LogEntry] = []
         self.finished = False
         self.winner: Optional[int] = None
         self.consecutive_sixes = 0
-        self.pending_roll: Optional[int] = None   # 已掷出但未走子的骰点
+        self.pending_roll: Optional[int] = None
+        self.pending_piece: Optional[int] = None
         self.last_roll: Optional[int] = None
-        self.pending_piece: Optional[int] = None   # 等待玩家选子的棋子 id
 
         piece_id = 0
         for i, spec in enumerate(players):
+            # 规则 9: 随机选出的先手即为红色, 其余按座位顺时针依次分配蓝/黄/绿
+            color_index = (i - self.first_seat) % n
             p = Player(
                 id=i,
                 name=spec.get("name") or META["defaultNames"][i % len(META["defaultNames"])],
-                token=spec.get("token") or META["tokens"][i % len(META["tokens"])],
-                color=spec.get("color") or META["colors"][i % len(META["colors"])],
+                token=META["tokens"][color_index % len(META["tokens"])],
+                color=META["colors"][color_index % len(META["colors"])],
+                color_index=color_index,
                 is_ai=bool(spec.get("is_ai", i > 0)),
-                seat=i,
+                seat=int(spec.get("seat", i)),
             )
             for j in range(PIECES_PER_PLAYER):
-                # pos = -1 - index → 4 枚棋子初始位置分别是 -1,-2,-3,-4
-                p.pieces.append(Piece(id=piece_id, owner=i, index=j, pos=-1 - j))
+                p.pieces.append(Piece(id=piece_id, owner=i, index=j,
+                                      pos=-1 - j, color=color_index))
                 piece_id += 1
             self.players.append(p)
+
+        self._add_log(self.first_seat,
+                      f"本局由 {self.players[self.first_seat].name} 先手 (红色先手), "
+                      f"其余按座位顺时针行动", "info")
 
     # ─────────────── 查询辅助 ───────────────
 
@@ -184,16 +210,20 @@ class FlightChessGame:
         hit = self._pieces_at(pos)
         return hit[0].owner if hit else None
 
-    def _home_path(self, owner: int) -> List[int]:
-        return HOME_PATHS[owner]
+    def _home_path(self, color: int) -> List[int]:
+        return HOME_PATHS[color]
 
-    def _home_index(self, owner: int, pos: int) -> int:
-        """终点跑道内索引 (1..6); 入口格 index 0。"""
-        path = self._home_path(owner)
+    def _home_index(self, color: int, pos: int) -> int:
+        path = self._home_path(color)
         try:
             return path.index(pos)
         except ValueError:
             return -1
+
+    def _stack_at(self, owner: int, pos: int) -> List[Piece]:
+        """同一方在 pos 处的全部棋子 (叠子)。"""
+        return [pc for pc in self.players[owner].pieces
+                if not pc.finished and pc.pos == pos]
 
     # ─────────────── 走子计算 (纯函数, 不改状态) ───────────────
 
@@ -204,39 +234,47 @@ class FlightChessGame:
 
         events: List[str] = []
         captured: List[int] = []
+        color = piece.color
 
-        # 1) 起点待起飞: 经典规则 — 掷出 5 或 6 才能起飞
+        # 1) 基地待起飞: 规则 3 —— 掷出 5 或 6 才能起飞
         if piece.waiting:
-            if roll in TAKEOFF_ROLLS:
-                events.append("takeoff")
-                # 起飞落在自己赛段的起点格 (红0/蓝13/黄26/绿39), 不是入口格
-                final_pos = START_CELLS[piece.owner]
-            else:
+            if roll not in TAKEOFF_ROLLS:
                 return {
                     "ok": False,
-                    "reason": "need_six",
+                    "reason": "need_takeoff",
                     "msg": "需掷出 " + "/".join(str(x) for x in sorted(TAKEOFF_ROLLS)) + " 才能起飞",
                     "from": piece.pos,
                     "to": piece.pos,
                 }
+            events.append("takeoff")
+            final_pos = START_CELLS[color]
         elif piece.in_home_stretch:
-            # 2a) 已在终点跑道内
+            # 2a) 已在终点跑道内 (规则 4: 精确抵达, 超出回退)
             final_pos = self._advance_home_stretch(piece, roll, events)
         else:
-            # 2b) 在环形跑道内
-            final_pos = self._advance_ring(piece, roll, events)
+            # 2b) 在公共跑道内
+            final_pos = self._advance_ring(piece, roll, events, captured)
 
         if final_pos is None:
-            return {"ok": False, "reason": "invalid", "msg": "无法移动", "from": piece.pos, "to": piece.pos}
+            return {"ok": False, "reason": "invalid", "msg": "无法移动",
+                    "from": piece.pos, "to": piece.pos}
 
-        # 3) 撞机判定 (终点跑道内不撞机)
-        path = self._home_path(piece.owner)
+        # 3) 落点撞机 (规则 6a: 必须走到同一格才能撞回; 终点跑道内不撞)
+        path = self._home_path(color)
         if not (path[1] <= final_pos <= path[-1]):
             for other in self._pieces_at(final_pos, exclude=piece.id):
                 if other.owner != piece.owner:
                     captured.append(other.id)
                     events.append("capture")
 
+        # 规则 7: 落到己方棋子所在格 -> 叠子
+        if STACKING:
+            own = [o for o in self._pieces_at(final_pos, exclude=piece.id)
+                   if o.owner == piece.owner]
+            if own:
+                events.append("stack")
+
+        group = self._stack_at(piece.owner, piece.pos) if STACKING else [piece]
         return {
             "ok": True,
             "from": piece.pos,
@@ -244,25 +282,26 @@ class FlightChessGame:
             "homeStep": (final_pos - path[1] + 1) if path[1] <= final_pos <= path[-1] else 0,
             "events": events,
             "captured": captured,
-            "arrivesFinish": final_pos == FINISHED_POS[piece.owner],
+            "arrivesFinish": final_pos == FINISHED_POS[color],
+            "stackSize": len(group),
         }
 
     def _advance_home_stretch(self, piece: Piece, roll: int,
                               events: List[str]) -> int:
         """
-        在终点跑道内前进。
-        path[0] = 入口格, path[1..6] = 跑道 6 格 (path[6] = 58 为最后一格)。
-        规则: 需精确走到最后一格 (path[6]) 才抵达终点 (pos = FINISHED);
-        超过则反弹回退。path[1]..path[5] 为中途格。
+        在终点跑道内前进 (规则 4)。
+        path[0] = 入口格, path[1..6] = 跑道 6 格, path[6] = 终点。
+        需精确走到最后一格才算成功; 超出则按多余点数回退。
         """
-        path = self._home_path(piece.owner)
-        idx = self._home_index(piece.owner, piece.pos)
+        color = piece.color
+        path = self._home_path(color)
+        idx = self._home_index(color, piece.pos)
         if idx < 0:
             idx = 0
-        last_cell = len(path) - 1        # = 6 -> path[6] = 58 最后一格
+        last_cell = len(path) - 1
         new_idx = idx + roll
         if new_idx > last_cell:
-            if GAME_CFG["bounceOnOvershoot"]:
+            if GAME_CFG.get("bounceOnOvershoot", True):
                 over = new_idx - last_cell
                 new_idx = last_cell - over
                 if new_idx < 1:
@@ -271,38 +310,102 @@ class FlightChessGame:
                 return path[new_idx]
             new_idx = last_cell
         if new_idx == last_cell:
-            # 精确抵达最后一格 -> 终点
-            return FINISHED_POS[piece.owner]
+            return FINISHED_POS[color]
         return path[new_idx]
 
-    def _advance_ring(self, piece: Piece, roll: int,
-                      events: List[str]) -> Optional[int]:
+    def _enter_home(self, color: int, rem: int, events: List[str]) -> int:
+        """从入口格进入本色终点跑道 (规则 4: 精确抵达, 超出回退)。"""
+        path = self._home_path(color)
+        entrance = HOME_ENTRANCES[color]
+        if rem <= 0:
+            return entrance
+        last = len(path) - 1
+        if rem == last:
+            return FINISHED_POS[color]
+        if rem > last:
+            over = rem - last
+            idx = last - over
+            if idx < 1:
+                idx = 1
+            events.append("bounce")
+            return path[idx]
+        return path[rem]
+
+    def _resolve_chain(self, cur: int, piece: Piece,
+                       events: List[str], captured: List[int]) -> int:
         """
-        在环形跑道 (0..51) 内前进, 处理跳跃/飞跃。
-        进入本色终点跑道: 走到入口格时停下; 掷点数恰好等于入口前进方向
-        所需步数时, 直接进入跑道第 1 格 (即 homePath[1])。
+        规则 5: 同色跳跃 / 飞行连锁。
+          规则 5a: 落在同色格 -> 跳到前方下一个同色格 (只跳一次)
+          规则 5b: 落在飞行起点格 -> 按红色箭头飞向对面飞行终点, 再继续向前一个同色格作跳跃
+                   跳跃的终点是飞行起点格 -> 同样飞往对面飞行终点
+        规则 6b: 飞行途中经过敌方棋子可以撞回
+        规则 6c: 跳跃途中经过敌方棋子不能撞回
         """
         owner = piece.owner
-        entrance = HOME_ENTRANCES[owner]
-        path = self._home_path(owner)
+        color = piece.color
+        entrance = HOME_ENTRANCES[color]
+
+        def do_flight(src: int) -> int:
+            dest = FLIGHT_TO[src]
+            events.append("flight")
+            # 规则 6b: 飞行途中经过敌方棋子可以撞回
+            for mid in FLIGHT_MID.get(src, []):
+                for other in self._pieces_at(mid, exclude=piece.id):
+                    if other.owner != owner:
+                        captured.append(other.id)
+                        events.append("capture")
+            return dest
+
+        # 初始落点: 是飞行起点则先飞, 否则直接跳一格 (规则 5a 只跳一次)
+        if cur in FLIGHT_TO:
+            cur = do_flight(cur)
+            if cur == entrance:
+                return cur
+            nxt = NEXT_SAME.get(cur)
+            if nxt is None:
+                return cur
+            events.append("jump")
+            cur = nxt
+        else:
+            nxt = NEXT_SAME.get(cur)
+            if nxt is None:
+                return cur
+            events.append("jump")
+            cur = nxt
+
+        # 连锁: 跳跃的终点是飞行起点 -> 再飞一次, 飞完继续向前一个同色格作跳跃
+        seen = set()
+        while cur != entrance and cur in FLIGHT_TO:
+            if cur in seen:
+                break
+            seen.add(cur)
+            cur = do_flight(cur)
+            if cur == entrance:
+                return cur
+            nxt = NEXT_SAME.get(cur)
+            if nxt is None:
+                return cur
+            events.append("jump")
+            cur = nxt
+
+        return cur
+
+    def _advance_ring(self, piece: Piece, roll: int,
+                      events: List[str], captured: List[int]) -> Optional[int]:
+        """
+        在公共跑道 (0..51) 内前进, 处理跳跃 / 飞行 / 进入终点跑道。
+        规则 6a: 普通行棋路过敌方棋子不撞, 只有落到同一格才撞。
+        """
+        color = piece.color
+        entrance = HOME_ENTRANCES[color]
 
         cur = piece.pos
         remaining = roll
-        my_color = piece.owner      # 玩家索引 == 颜色索引 (红0 蓝1 黄2 绿3)
 
-        def enter_home(rem: int) -> int:
-            """从入口格进入本色终点跑道。rem = 剩余步数。"""
-            if rem <= 0:
-                return entrance
-            if rem >= len(path) - 1:
-                return FINISHED_POS[owner]
-            return path[rem]
-
-        # 已在入口格 (上一回合正好停在入口) → 本回合直接进入终点跑道
+        # 规则 4: 已停在终点入口格 -> 本回合直接进入终点跑道
         if cur == entrance:
-            return enter_home(remaining)
+            return self._enter_home(color, remaining, events)
 
-        # 逐格推进; 落到与自己同色的格子 → 自动往前飞 FLY_STEPS 格
         while remaining > 0:
             nxt = cur + 1
             if nxt >= TILE_COUNT:
@@ -310,28 +413,22 @@ class FlightChessGame:
             cur = nxt
             remaining -= 1
 
-            # 落到入口格 → 优先进入终点跑道
-            #   注: 入口格本身是本家颜色, 但入口判定优先于同色跳跃,
-            #   否则棋子每次到入口都被跳过 4 格, 永远进不了终点道。
+            # 终点入口优先进入终点跑道
             if cur == entrance:
-                return enter_home(remaining)
+                return self._enter_home(color, remaining, events)
 
-            # 同色格 → 跳 4 格 (只跳一次, 不连锁); 白底格(-1)不触发
-            if FLY_ENABLED and TILE_COLOR_IDX[cur] >= 0 and TILE_COLOR_IDX[cur] == my_color:
-                events.append("fly")
-                for _ in range(FLY_STEPS):
-                    n2 = cur + 1
-                    if n2 >= TILE_COUNT:
-                        n2 = 0
-                    cur = n2
-                # 飞跃后正好落在入口格 → 按入口规则处理
+            # 落在同色格 -> 跳跃 / 飞行连锁
+            if TILE_COLOR_IDX[cur] == color:
+                cur = self._resolve_chain(cur, piece, events, captured)
                 if cur == entrance:
-                    return enter_home(remaining)
-                continue
+                    return self._enter_home(color, remaining, events)
+                if cur >= TILE_COUNT:
+                    # 连锁已进入终点道
+                    return cur
 
         return cur
 
-    # ─────────────── 实际执行 ───────────────
+    # ─────────────── 掷骰与行动 ───────────────
 
     def roll(self) -> Dict[str, Any]:
         """当前玩家掷骰。结果可能要求选子移动。"""
@@ -344,14 +441,15 @@ class FlightChessGame:
         value = self.rng.randint(1, DICE_SIDES)
         self.last_roll = value
         self.turn_count += 1
-        self.log.append(LogEntry(self.turn_count, player.id, f"{player.name} 掷出 {value} 点", "roll", {"value": value}))
+        self.log.append(LogEntry(self.turn_count, player.id,
+                                 f"{player.name} 掷出 {value} 点", "roll", {"value": value}))
 
         if value == 6:
             self.consecutive_sixes += 1
-            if self.consecutive_sixes >= MAX_SIXES and GAME_CFG["threeSixesPenalty"]:
+            if self.consecutive_sixes >= MAX_SIXES and GAME_CFG.get("threeSixesPenalty"):
                 self.consecutive_sixes = 0
                 self.pending_roll = None
-                self._add_log(player.id, f"连续 3 个 6，{player.name} 本回合作废并跳过", "penalty")
+                self._add_log(player.id, f"连续 {MAX_SIXES} 个 6，{player.name} 本回合作废并跳过", "penalty")
                 self._advance_turn()
                 return self.state()
         else:
@@ -359,17 +457,16 @@ class FlightChessGame:
 
         self.pending_roll = value
 
-        # 自动选择: 只有一枚可动棋子时直接走
         movable = self._movable_pieces(player, value)
         if not movable:
-            self._add_log(player.id, f"{player.name} 无子可动，跳过回合", "info")
+            # 规则 2: 无可用棋子且点数不能起飞 -> 盖轮 (跳过回合)
+            self._add_log(player.id, f"{player.name} 无子可动，盖轮跳过", "info")
             self.pending_roll = None
             self._advance_turn()
             return self.state()
         if len(movable) == 1:
             return self.move(movable[0].id)
 
-        # 多枚可动 → 交给前端选
         self.pending_piece = None
         return {
             **self.state(),
@@ -412,53 +509,72 @@ class FlightChessGame:
 
         from_pos = piece.pos
         to_pos = pv["to"]
-        piece.pos = to_pos
 
-        # 撞机: 敌方棋子被击飞回起点
-        captured_ids = pv.get("captured", [])
+        # 规则 7: 叠子共同行动 —— 出发格上的己方棋子整叠一起移动
+        group = self._stack_at(piece.owner, from_pos) if STACKING else [piece]
+
+        for pc in group:
+            pc.pos = to_pos
+
+        # 规则 6: 撞机 —— 敌方棋子被逐回基地; 叠子被撞时整叠回基地
+        captured_ids = list(dict.fromkeys(pv.get("captured", [])))
         for other_id in captured_ids:
             other = self.piece_by_id(other_id)
             if other is None:
                 continue
             op = self.players[other.owner]
-            other.pos = -1 - other.index
-            op.finished_pieces = max(0, op.finished_pieces)
-            self._add_log(op.id, f"被 {player.name} 的棋子撞机，{op.name} 的棋子被击飞回起点", "capture",
-                          {"pieceId": other.id, "by": player.id})
+            # 规则 6d: 叠子参与被撞时视为一颗, 整叠回基地
+            enemy_group = self._stack_at(other.owner, other.pos) if STACKING else [other]
+            for ep in enemy_group:
+                ep.pos = -1 - ep.index
+            self._add_log(op.id,
+                          f"被 {player.name} 的棋子撞机，{op.name} 的 "
+                          f"{len(enemy_group)} 枚棋子被逐回基地",
+                          "capture", {"pieceId": other.id, "by": player.id,
+                                      "count": len(enemy_group)})
 
-        # 到达终点
-        if to_pos == FINISHED_POS[player.id]:
-            piece.finished = True
-            player.finished_pieces += 1
-            player.points += BONUS_CFG["reachedHomePoints"]
-            self._add_log(player.id, f"🎉 {player.name} 的一枚棋子抵达终点！", "finish", {"pieceId": piece.id})
+        # 规则 4/10: 抵达终点
+        if to_pos == FINISHED_POS[piece.color]:
+            for pc in group:
+                if not pc.finished:
+                    pc.finished = True
+                    player.finished_pieces += 1
+            player.points += BONUS_CFG["reachedHomePoints"] * len(group)
+            self._add_log(player.id,
+                          f"🎉 {player.name} 的 {len(group)} 枚棋子抵达终点！",
+                          "finish", {"pieceId": piece.id})
 
-        # 事件文案
         ev = pv.get("events", [])
         if "takeoff" in ev:
             self._add_log(player.id, f"{player.name} 的棋子起飞！", "move", {"pieceId": piece.id})
         if "jump" in ev:
-            self._add_log(player.id, f"{player.name} 的棋子触发跳跃！", "move", {"pieceId": piece.id})
-        if "fly" in ev:
-            self._add_log(player.id, f"{player.name} 的棋子完成飞跃！", "move", {"pieceId": piece.id})
+            self._add_log(player.id, f"{player.name} 的棋子触发同色跳跃！", "move", {"pieceId": piece.id})
+        if "flight" in ev:
+            self._add_log(player.id, f"{player.name} 的棋子触发飞行！", "move", {"pieceId": piece.id})
         if "bounce" in ev:
-            self._add_log(player.id, f"{player.name} 的棋子到达终点后反弹", "move", {"pieceId": piece.id})
+            self._add_log(player.id, f"{player.name} 的棋子点数超过终点，回退", "move", {"pieceId": piece.id})
+        if "stack" in ev:
+            self._add_log(player.id, f"{player.name} 的棋子与其他棋子叠在一起", "move", {"pieceId": piece.id})
 
-        # 移动基础文案
-        self._add_log(player.id, f"{player.name} 移动 {from_pos} → {to_pos}", "move",
-                      {"pieceId": piece.id, "from": from_pos, "to": to_pos})
+        self._add_log(player.id,
+                      f"{player.name} 移动 {from_pos} → {to_pos}"
+                      + (f" (叠子 {len(group)} 枚)" if len(group) > 1 else ""),
+                      "move", {"pieceId": piece.id, "from": from_pos, "to": to_pos})
 
-        # 掷 6 继续
-        extra_turn = (roll == 6 and GAME_CFG["sixRollsAgain"] and self.consecutive_sixes < MAX_SIXES)
+        # 规则 8: 掷 6 奖励额外一次掷骰 (先完成移动, 再重新掷骰), 最多奖励 3 次
+        # consecutive_sixes 已自增, 故奖励次数 = consecutive_sixes - 1
+        extra_turn = (roll == 6 and GAME_CFG.get("sixRollsAgain", True)
+                      and self.consecutive_sixes < MAX_SIXES)
         self.pending_roll = None
         self.pending_piece = None
 
-        # 全部棋子到家 → 获胜
+        # 规则 10: 一方 4 枚棋子全部抵达终点即结束
         if all(pc.finished for pc in player.pieces):
             self.finished = True
             self.winner = player.id
             player.points += BONUS_CFG["winnerBonusPoints"]
-            self._add_log(player.id, f"🏆 {player.name} 全部棋子抵达终点，赢得本局！", "finish", {"winner": True})
+            self._add_log(player.id, f"🏆 {player.name} 全部棋子抵达终点，赢得本局！",
+                          "finish", {"winner": True})
             return self.state()
 
         if not extra_turn:
@@ -467,16 +583,18 @@ class FlightChessGame:
         return self.state()
 
     def _advance_turn(self) -> None:
-        self.turn = (self.turn + 1) % len(self.players)
-        # 跳过已全部到家的玩家
-        for _ in range(len(self.players)):
+        """按座位顺时针推进到下一位未结束的玩家 (规则 9)。"""
+        n = len(self.players)
+        idx = self.order.index(self.turn)
+        for _ in range(n):
+            idx = (idx + 1) % n
+            self.turn = self.order[idx]
             p = self.players[self.turn]
-            if all(pc.finished for pc in p.pieces):
-                self.turn = (self.turn + 1) % len(self.players)
-            else:
-                break
+            if not all(pc.finished for pc in p.pieces):
+                return
 
-    def _add_log(self, player_id: int, text: str, kind: str = "info", payload: Optional[Dict] = None) -> None:
+    def _add_log(self, player_id: int, text: str, kind: str = "info",
+                 payload: Optional[Dict[str, Any]] = None) -> None:
         self.log.append(LogEntry(self.turn_count, player_id, text, kind, payload or {}))
 
     # ─────────────── 序列化 ───────────────
@@ -489,12 +607,14 @@ class FlightChessGame:
                 "name": p.name,
                 "token": p.token,
                 "color": p.color,
+                "colorIndex": p.color_index,
                 "points": p.points,
                 "finishedPieces": p.finished_pieces,
                 "isAI": p.is_ai,
                 "seat": p.seat,
                 "pieces": [
-                    {"id": pc.id, "index": pc.index, "pos": pc.pos, "finished": pc.finished, "waiting": pc.waiting}
+                    {"id": pc.id, "index": pc.index, "pos": pc.pos,
+                     "finished": pc.finished, "waiting": pc.waiting}
                     for pc in p.pieces
                 ],
             })
@@ -507,6 +627,8 @@ class FlightChessGame:
             "lastRoll": self.last_roll,
             "pendingRoll": self.pending_roll,
             "consecutiveSixes": self.consecutive_sixes,
+            "firstPlayer": self.first_seat,
+            "turnOrder": self.order,
             "players": players,
             "board": {
                 "tileCount": TILE_COUNT,
@@ -516,13 +638,16 @@ class FlightChessGame:
                 "finishedPos": FINISHED_POS,
                 "tileColors": TILE_COLOR_IDX,
                 "colorNames": COLOR_NAMES,
-                "flyRule": {"enabled": FLY_ENABLED, "steps": FLY_STEPS},
+                "nextSame": NEXT_SAME,
+                "flightMap": FLIGHT_TO,
+                "flightPaths": BOARD.get("flightPaths", {}),
                 "tiles": TILES,
                 "slots": BOARD.get("slots", []),
             },
             "rules": GAME_CFG,
             "log": [
-                {"turn": e.turn, "player": e.player, "text": e.text, "kind": e.kind, "payload": e.payload}
+                {"turn": e.turn, "player": e.player, "text": e.text,
+                 "kind": e.kind, "payload": e.payload}
                 for e in self.log[-40:]
             ],
         }

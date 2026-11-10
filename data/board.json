@@ -1,7 +1,7 @@
 {
   "meta": {
     "name": "飞行棋",
-    "version": "2.0",
+    "version": "2.1",
     "tileCount": 52,
     "playerCount": 4,
     "homeStretchLen": 6,
@@ -450,12 +450,6 @@
     2
   ],
   "homeStretchLen": 6,
-  "flyRule": {
-    "enabled": true,
-    "steps": 4,
-    "chain": false,
-    "desc": "落到与自己棋子同色的格子, 自动往前跳 4 格 (只跳一次, 不连锁)"
-  },
   "takeoffRolls": [
     5,
     6
@@ -807,5 +801,1269 @@
       ],
       "cornerKey": "top-left"
     }
-  ]
+  ],
+  "nextSame": [
+    {
+      "from": 7,
+      "to": 12,
+      "color": 0
+    },
+    {
+      "from": 12,
+      "to": 15,
+      "color": 0
+    },
+    {
+      "from": 15,
+      "to": 19,
+      "color": 0
+    },
+    {
+      "from": 19,
+      "to": 31,
+      "color": 0
+    },
+    {
+      "from": 31,
+      "to": 35,
+      "color": 0
+    },
+    {
+      "from": 35,
+      "to": 47,
+      "color": 0
+    },
+    {
+      "from": 47,
+      "to": 7,
+      "color": 0
+    },
+    {
+      "from": 5,
+      "to": 9,
+      "color": 1
+    },
+    {
+      "from": 9,
+      "to": 21,
+      "color": 1
+    },
+    {
+      "from": 21,
+      "to": 33,
+      "color": 1
+    },
+    {
+      "from": 33,
+      "to": 38,
+      "color": 1
+    },
+    {
+      "from": 38,
+      "to": 41,
+      "color": 1
+    },
+    {
+      "from": 41,
+      "to": 45,
+      "color": 1
+    },
+    {
+      "from": 45,
+      "to": 5,
+      "color": 1
+    },
+    {
+      "from": 8,
+      "to": 20,
+      "color": 2
+    },
+    {
+      "from": 20,
+      "to": 25,
+      "color": 2
+    },
+    {
+      "from": 25,
+      "to": 28,
+      "color": 2
+    },
+    {
+      "from": 28,
+      "to": 32,
+      "color": 2
+    },
+    {
+      "from": 32,
+      "to": 44,
+      "color": 2
+    },
+    {
+      "from": 44,
+      "to": 48,
+      "color": 2
+    },
+    {
+      "from": 48,
+      "to": 8,
+      "color": 2
+    },
+    {
+      "from": 2,
+      "to": 6,
+      "color": 3
+    },
+    {
+      "from": 6,
+      "to": 18,
+      "color": 3
+    },
+    {
+      "from": 18,
+      "to": 22,
+      "color": 3
+    },
+    {
+      "from": 22,
+      "to": 34,
+      "color": 3
+    },
+    {
+      "from": 34,
+      "to": 46,
+      "color": 3
+    },
+    {
+      "from": 46,
+      "to": 51,
+      "color": 3
+    },
+    {
+      "from": 51,
+      "to": 2,
+      "color": 3
+    }
+  ],
+  "flightMap": [
+    {
+      "from": 15,
+      "to": 47,
+      "owner": 0,
+      "fromXY": [
+        14,
+        2
+      ],
+      "toXY": [
+        0,
+        6
+      ],
+      "chainTo": 7
+    },
+    {
+      "from": 41,
+      "to": 21,
+      "owner": 1,
+      "fromXY": [
+        0,
+        12
+      ],
+      "toXY": [
+        14,
+        8
+      ],
+      "chainTo": 33
+    },
+    {
+      "from": 28,
+      "to": 8,
+      "owner": 2,
+      "fromXY": [
+        12,
+        14
+      ],
+      "toXY": [
+        8,
+        0
+      ],
+      "chainTo": 20
+    },
+    {
+      "from": 2,
+      "to": 34,
+      "owner": 3,
+      "fromXY": [
+        2,
+        0
+      ],
+      "toXY": [
+        6,
+        14
+      ],
+      "chainTo": 46
+    }
+  ],
+  "flightPaths": {
+    "15": {
+      "from": 15,
+      "to": 47,
+      "owner": 0,
+      "fromXY": [
+        14,
+        2
+      ],
+      "toXY": [
+        0,
+        6
+      ],
+      "forwardSteps": 32,
+      "mid": [
+        {
+          "xy": [
+            14,
+            3
+          ],
+          "pos": 16,
+          "capturable": true
+        },
+        {
+          "xy": [
+            14,
+            4
+          ],
+          "pos": 17,
+          "capturable": true
+        },
+        {
+          "xy": [
+            14,
+            5
+          ],
+          "pos": 18,
+          "capturable": true
+        },
+        {
+          "xy": [
+            14,
+            6
+          ],
+          "pos": 19,
+          "capturable": true
+        },
+        {
+          "xy": [
+            14,
+            7
+          ],
+          "pos": 20,
+          "capturable": true
+        },
+        {
+          "xy": [
+            14,
+            8
+          ],
+          "pos": 21,
+          "capturable": true
+        },
+        {
+          "xy": [
+            14,
+            9
+          ],
+          "pos": 22,
+          "capturable": true
+        },
+        {
+          "xy": [
+            14,
+            10
+          ],
+          "pos": 23,
+          "capturable": true
+        },
+        {
+          "xy": [
+            14,
+            11
+          ],
+          "pos": 24,
+          "capturable": true
+        },
+        {
+          "xy": [
+            14,
+            12
+          ],
+          "pos": 25,
+          "capturable": true
+        },
+        {
+          "xy": [
+            14,
+            14
+          ],
+          "pos": 26,
+          "capturable": true
+        },
+        {
+          "xy": [
+            13,
+            14
+          ],
+          "pos": 27,
+          "capturable": true
+        },
+        {
+          "xy": [
+            12,
+            14
+          ],
+          "pos": 28,
+          "capturable": true
+        },
+        {
+          "xy": [
+            11,
+            14
+          ],
+          "pos": 29,
+          "capturable": true
+        },
+        {
+          "xy": [
+            10,
+            14
+          ],
+          "pos": 30,
+          "capturable": true
+        },
+        {
+          "xy": [
+            9,
+            14
+          ],
+          "pos": 31,
+          "capturable": true
+        },
+        {
+          "xy": [
+            8,
+            14
+          ],
+          "pos": 32,
+          "capturable": true
+        },
+        {
+          "xy": [
+            7,
+            14
+          ],
+          "pos": 33,
+          "capturable": true
+        },
+        {
+          "xy": [
+            6,
+            14
+          ],
+          "pos": 34,
+          "capturable": true
+        },
+        {
+          "xy": [
+            5,
+            14
+          ],
+          "pos": 35,
+          "capturable": true
+        },
+        {
+          "xy": [
+            4,
+            14
+          ],
+          "pos": 36,
+          "capturable": true
+        },
+        {
+          "xy": [
+            3,
+            14
+          ],
+          "pos": 37,
+          "capturable": true
+        },
+        {
+          "xy": [
+            2,
+            14
+          ],
+          "pos": 38,
+          "capturable": true
+        },
+        {
+          "xy": [
+            0,
+            14
+          ],
+          "pos": 39,
+          "capturable": true
+        },
+        {
+          "xy": [
+            0,
+            13
+          ],
+          "pos": 40,
+          "capturable": true
+        },
+        {
+          "xy": [
+            0,
+            12
+          ],
+          "pos": 41,
+          "capturable": true
+        },
+        {
+          "xy": [
+            0,
+            11
+          ],
+          "pos": 42,
+          "capturable": true
+        },
+        {
+          "xy": [
+            0,
+            10
+          ],
+          "pos": 43,
+          "capturable": true
+        },
+        {
+          "xy": [
+            0,
+            9
+          ],
+          "pos": 44,
+          "capturable": true
+        },
+        {
+          "xy": [
+            0,
+            8
+          ],
+          "pos": 45,
+          "capturable": true
+        },
+        {
+          "xy": [
+            0,
+            7
+          ],
+          "pos": 46,
+          "capturable": true
+        }
+      ]
+    },
+    "41": {
+      "from": 41,
+      "to": 21,
+      "owner": 1,
+      "fromXY": [
+        0,
+        12
+      ],
+      "toXY": [
+        14,
+        8
+      ],
+      "forwardSteps": 32,
+      "mid": [
+        {
+          "xy": [
+            0,
+            11
+          ],
+          "pos": 42,
+          "capturable": true
+        },
+        {
+          "xy": [
+            0,
+            10
+          ],
+          "pos": 43,
+          "capturable": true
+        },
+        {
+          "xy": [
+            0,
+            9
+          ],
+          "pos": 44,
+          "capturable": true
+        },
+        {
+          "xy": [
+            0,
+            8
+          ],
+          "pos": 45,
+          "capturable": true
+        },
+        {
+          "xy": [
+            0,
+            7
+          ],
+          "pos": 46,
+          "capturable": true
+        },
+        {
+          "xy": [
+            0,
+            6
+          ],
+          "pos": 47,
+          "capturable": true
+        },
+        {
+          "xy": [
+            0,
+            5
+          ],
+          "pos": 48,
+          "capturable": true
+        },
+        {
+          "xy": [
+            0,
+            4
+          ],
+          "pos": 49,
+          "capturable": true
+        },
+        {
+          "xy": [
+            0,
+            3
+          ],
+          "pos": 50,
+          "capturable": true
+        },
+        {
+          "xy": [
+            0,
+            2
+          ],
+          "pos": 51,
+          "capturable": true
+        },
+        {
+          "xy": [
+            0,
+            0
+          ],
+          "pos": 0,
+          "capturable": true
+        },
+        {
+          "xy": [
+            1,
+            0
+          ],
+          "pos": 1,
+          "capturable": true
+        },
+        {
+          "xy": [
+            2,
+            0
+          ],
+          "pos": 2,
+          "capturable": true
+        },
+        {
+          "xy": [
+            3,
+            0
+          ],
+          "pos": 3,
+          "capturable": true
+        },
+        {
+          "xy": [
+            4,
+            0
+          ],
+          "pos": 4,
+          "capturable": true
+        },
+        {
+          "xy": [
+            5,
+            0
+          ],
+          "pos": 5,
+          "capturable": true
+        },
+        {
+          "xy": [
+            6,
+            0
+          ],
+          "pos": 6,
+          "capturable": true
+        },
+        {
+          "xy": [
+            7,
+            0
+          ],
+          "pos": 7,
+          "capturable": true
+        },
+        {
+          "xy": [
+            8,
+            0
+          ],
+          "pos": 8,
+          "capturable": true
+        },
+        {
+          "xy": [
+            9,
+            0
+          ],
+          "pos": 9,
+          "capturable": true
+        },
+        {
+          "xy": [
+            10,
+            0
+          ],
+          "pos": 10,
+          "capturable": true
+        },
+        {
+          "xy": [
+            11,
+            0
+          ],
+          "pos": 11,
+          "capturable": true
+        },
+        {
+          "xy": [
+            12,
+            0
+          ],
+          "pos": 12,
+          "capturable": true
+        },
+        {
+          "xy": [
+            14,
+            0
+          ],
+          "pos": 13,
+          "capturable": true
+        },
+        {
+          "xy": [
+            14,
+            1
+          ],
+          "pos": 14,
+          "capturable": true
+        },
+        {
+          "xy": [
+            14,
+            2
+          ],
+          "pos": 15,
+          "capturable": true
+        },
+        {
+          "xy": [
+            14,
+            3
+          ],
+          "pos": 16,
+          "capturable": true
+        },
+        {
+          "xy": [
+            14,
+            4
+          ],
+          "pos": 17,
+          "capturable": true
+        },
+        {
+          "xy": [
+            14,
+            5
+          ],
+          "pos": 18,
+          "capturable": true
+        },
+        {
+          "xy": [
+            14,
+            6
+          ],
+          "pos": 19,
+          "capturable": true
+        },
+        {
+          "xy": [
+            14,
+            7
+          ],
+          "pos": 20,
+          "capturable": true
+        }
+      ]
+    },
+    "28": {
+      "from": 28,
+      "to": 8,
+      "owner": 2,
+      "fromXY": [
+        12,
+        14
+      ],
+      "toXY": [
+        8,
+        0
+      ],
+      "forwardSteps": 32,
+      "mid": [
+        {
+          "xy": [
+            11,
+            14
+          ],
+          "pos": 29,
+          "capturable": true
+        },
+        {
+          "xy": [
+            10,
+            14
+          ],
+          "pos": 30,
+          "capturable": true
+        },
+        {
+          "xy": [
+            9,
+            14
+          ],
+          "pos": 31,
+          "capturable": true
+        },
+        {
+          "xy": [
+            8,
+            14
+          ],
+          "pos": 32,
+          "capturable": true
+        },
+        {
+          "xy": [
+            7,
+            14
+          ],
+          "pos": 33,
+          "capturable": true
+        },
+        {
+          "xy": [
+            6,
+            14
+          ],
+          "pos": 34,
+          "capturable": true
+        },
+        {
+          "xy": [
+            5,
+            14
+          ],
+          "pos": 35,
+          "capturable": true
+        },
+        {
+          "xy": [
+            4,
+            14
+          ],
+          "pos": 36,
+          "capturable": true
+        },
+        {
+          "xy": [
+            3,
+            14
+          ],
+          "pos": 37,
+          "capturable": true
+        },
+        {
+          "xy": [
+            2,
+            14
+          ],
+          "pos": 38,
+          "capturable": true
+        },
+        {
+          "xy": [
+            0,
+            14
+          ],
+          "pos": 39,
+          "capturable": true
+        },
+        {
+          "xy": [
+            0,
+            13
+          ],
+          "pos": 40,
+          "capturable": true
+        },
+        {
+          "xy": [
+            0,
+            12
+          ],
+          "pos": 41,
+          "capturable": true
+        },
+        {
+          "xy": [
+            0,
+            11
+          ],
+          "pos": 42,
+          "capturable": true
+        },
+        {
+          "xy": [
+            0,
+            10
+          ],
+          "pos": 43,
+          "capturable": true
+        },
+        {
+          "xy": [
+            0,
+            9
+          ],
+          "pos": 44,
+          "capturable": true
+        },
+        {
+          "xy": [
+            0,
+            8
+          ],
+          "pos": 45,
+          "capturable": true
+        },
+        {
+          "xy": [
+            0,
+            7
+          ],
+          "pos": 46,
+          "capturable": true
+        },
+        {
+          "xy": [
+            0,
+            6
+          ],
+          "pos": 47,
+          "capturable": true
+        },
+        {
+          "xy": [
+            0,
+            5
+          ],
+          "pos": 48,
+          "capturable": true
+        },
+        {
+          "xy": [
+            0,
+            4
+          ],
+          "pos": 49,
+          "capturable": true
+        },
+        {
+          "xy": [
+            0,
+            3
+          ],
+          "pos": 50,
+          "capturable": true
+        },
+        {
+          "xy": [
+            0,
+            2
+          ],
+          "pos": 51,
+          "capturable": true
+        },
+        {
+          "xy": [
+            0,
+            0
+          ],
+          "pos": 0,
+          "capturable": true
+        },
+        {
+          "xy": [
+            1,
+            0
+          ],
+          "pos": 1,
+          "capturable": true
+        },
+        {
+          "xy": [
+            2,
+            0
+          ],
+          "pos": 2,
+          "capturable": true
+        },
+        {
+          "xy": [
+            3,
+            0
+          ],
+          "pos": 3,
+          "capturable": true
+        },
+        {
+          "xy": [
+            4,
+            0
+          ],
+          "pos": 4,
+          "capturable": true
+        },
+        {
+          "xy": [
+            5,
+            0
+          ],
+          "pos": 5,
+          "capturable": true
+        },
+        {
+          "xy": [
+            6,
+            0
+          ],
+          "pos": 6,
+          "capturable": true
+        },
+        {
+          "xy": [
+            7,
+            0
+          ],
+          "pos": 7,
+          "capturable": true
+        }
+      ]
+    },
+    "2": {
+      "from": 2,
+      "to": 34,
+      "owner": 3,
+      "fromXY": [
+        2,
+        0
+      ],
+      "toXY": [
+        6,
+        14
+      ],
+      "forwardSteps": 32,
+      "mid": [
+        {
+          "xy": [
+            3,
+            0
+          ],
+          "pos": 3,
+          "capturable": true
+        },
+        {
+          "xy": [
+            4,
+            0
+          ],
+          "pos": 4,
+          "capturable": true
+        },
+        {
+          "xy": [
+            5,
+            0
+          ],
+          "pos": 5,
+          "capturable": true
+        },
+        {
+          "xy": [
+            6,
+            0
+          ],
+          "pos": 6,
+          "capturable": true
+        },
+        {
+          "xy": [
+            7,
+            0
+          ],
+          "pos": 7,
+          "capturable": true
+        },
+        {
+          "xy": [
+            8,
+            0
+          ],
+          "pos": 8,
+          "capturable": true
+        },
+        {
+          "xy": [
+            9,
+            0
+          ],
+          "pos": 9,
+          "capturable": true
+        },
+        {
+          "xy": [
+            10,
+            0
+          ],
+          "pos": 10,
+          "capturable": true
+        },
+        {
+          "xy": [
+            11,
+            0
+          ],
+          "pos": 11,
+          "capturable": true
+        },
+        {
+          "xy": [
+            12,
+            0
+          ],
+          "pos": 12,
+          "capturable": true
+        },
+        {
+          "xy": [
+            14,
+            0
+          ],
+          "pos": 13,
+          "capturable": true
+        },
+        {
+          "xy": [
+            14,
+            1
+          ],
+          "pos": 14,
+          "capturable": true
+        },
+        {
+          "xy": [
+            14,
+            2
+          ],
+          "pos": 15,
+          "capturable": true
+        },
+        {
+          "xy": [
+            14,
+            3
+          ],
+          "pos": 16,
+          "capturable": true
+        },
+        {
+          "xy": [
+            14,
+            4
+          ],
+          "pos": 17,
+          "capturable": true
+        },
+        {
+          "xy": [
+            14,
+            5
+          ],
+          "pos": 18,
+          "capturable": true
+        },
+        {
+          "xy": [
+            14,
+            6
+          ],
+          "pos": 19,
+          "capturable": true
+        },
+        {
+          "xy": [
+            14,
+            7
+          ],
+          "pos": 20,
+          "capturable": true
+        },
+        {
+          "xy": [
+            14,
+            8
+          ],
+          "pos": 21,
+          "capturable": true
+        },
+        {
+          "xy": [
+            14,
+            9
+          ],
+          "pos": 22,
+          "capturable": true
+        },
+        {
+          "xy": [
+            14,
+            10
+          ],
+          "pos": 23,
+          "capturable": true
+        },
+        {
+          "xy": [
+            14,
+            11
+          ],
+          "pos": 24,
+          "capturable": true
+        },
+        {
+          "xy": [
+            14,
+            12
+          ],
+          "pos": 25,
+          "capturable": true
+        },
+        {
+          "xy": [
+            14,
+            14
+          ],
+          "pos": 26,
+          "capturable": true
+        },
+        {
+          "xy": [
+            13,
+            14
+          ],
+          "pos": 27,
+          "capturable": true
+        },
+        {
+          "xy": [
+            12,
+            14
+          ],
+          "pos": 28,
+          "capturable": true
+        },
+        {
+          "xy": [
+            11,
+            14
+          ],
+          "pos": 29,
+          "capturable": true
+        },
+        {
+          "xy": [
+            10,
+            14
+          ],
+          "pos": 30,
+          "capturable": true
+        },
+        {
+          "xy": [
+            9,
+            14
+          ],
+          "pos": 31,
+          "capturable": true
+        },
+        {
+          "xy": [
+            8,
+            14
+          ],
+          "pos": 32,
+          "capturable": true
+        },
+        {
+          "xy": [
+            7,
+            14
+          ],
+          "pos": 33,
+          "capturable": true
+        }
+      ]
+    }
+  },
+  "jumpRule": {
+    "enabled": true,
+    "mode": "nextSameColor",
+    "maxChain": 8,
+    "desc": "落在与棋子同色的格子 -> 跳到前方下一个同色格; 若该格是飞行起点, 按红色箭头飞向对面飞行终点, 再继续同色跳跃"
+  }
 }

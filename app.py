@@ -212,11 +212,11 @@ def _ai_pick_piece(g: FlightChessGame, player, roll: int,
             score += 500 * len(pv["captured"])
         if piece.in_home_stretch:
             score += 120
-        _path = g._home_path(piece.owner)
+        _path = g._home_path(piece.color)
         if _path[1] <= to <= _path[-1]:
             score += 80
         # 位置越靠前越好 (环形跑道上, 距离自己入口越近越好)
-        entrance = START_CELLS[piece.owner]
+        entrance = START_CELLS[piece.color]
         dist = (to - entrance) % TILE_COUNT
         score += (TILE_COUNT - dist) * 1.0
         # 起飞也算好

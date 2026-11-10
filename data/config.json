@@ -3,7 +3,8 @@
     "name": "飞行棋",
     "version": "1.0",
     "boardVersion": "1.0",
-    "updatedAt": "2026-11-08"
+    "updatedAt": "2026-11-10",
+    "ruleSpec": "官方 10 条规则 (2026-11-10 版)"
   },
   "game": {
     "playerCount": 4,
@@ -21,7 +22,14 @@
     "takeoffRolls": [
       5,
       6
-    ]
+    ],
+    "randomFirstPlayer": true,
+    "stacking": true,
+    "captureOnSameCellOnly": true,
+    "captureDuringFlight": true,
+    "captureDuringJump": false,
+    "minPlayers": 2,
+    "maxPlayers": 4
   },
   "bonus": {
     "startBonusPoints": 2,

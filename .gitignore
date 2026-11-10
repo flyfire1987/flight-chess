@@ -42,3 +42,7 @@ Thumbs.db
 
 # OpenClaw 本地配置 (不入库)
 .openclaw/
+
+# 分析中间产物 (参考图衍生)
+docs/ref_grid.png
+docs/ref_center.png
