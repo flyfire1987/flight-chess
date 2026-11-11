@@ -88,6 +88,8 @@ def find_jump(color):
         y = E.NEXT_SAME.get(x)
         if y is None or y in E.FLIGHT_TO:
             continue
+        if y == E.HOME_ENTRANCES[color]:
+            continue
         if E.TILE_COLOR_IDX[y] != color:
             continue
         if any(E.TILE_COLOR_IDX[k] == color for k in range(x + 1, y)):
@@ -96,12 +98,20 @@ def find_jump(color):
     return None, None
 
 
-def find_flight_with_mid():
-    for s in E.FLIGHT_TO:
-        mid = E.FLIGHT_MID.get(s) or []
-        if mid:
-            return s, list(mid)
-    return None, []
+def flight_of(color):
+    """该颜色自己的飞行起点 (规则 5b: 只有自己颜色的飞行起点才触发飞行)"""
+    for f in E.BOARD.get("flightMap", []):
+        if int(f.get("owner", -1)) == color:
+            return int(f["from"]), int(f["to"])
+    return None, None
+
+
+def find_flight_with_mid(color=0):
+    src, _dst = flight_of(color)
+    if src is None:
+        return None, []
+    mid = E.FLIGHT_MID.get(src) or []
+    return src, list(mid)
 
 
 # ───────────────────────── 规则 1 / 9 ─────────────────────────
@@ -218,13 +228,29 @@ def test_jump_and_flight():
         pv = g.preview_move(pc, 1)
         check("规则5a: 落在同色格 -> 跳到前方下一个同色格", pv["to"] == y, "%s -> %s (期望 %s)" % (x, pv["to"], y))
 
-    src = 15
-    if src in E.FLIGHT_TO:
+    src, dst = flight_of(0)
+    check("规则5b: 存在红色自己的飞行起点", src is not None, (src, dst))
+    if src is not None:
         pc = rp.pieces[0]
         pc.pos = src - 1
         pv = g.preview_move(pc, 1)
         check("规则5b: 落在飞行起点 -> 飞向对面飞行终点并连锁跳跃",
               "flight" in pv.get("events", []), pv.get("events"))
+        check("规则5b: 飞行后落到对面飞行终点并继续跳进本家入口",
+              pv.get("to") == E.HOME_ENTRANCES[0], pv.get("to"))
+
+        # 反向: 他色飞行起点不得触发飞行 (规则 5b 要求"和自己颜色相同")
+        other = None
+        for f in E.BOARD.get("flightMap", []):
+            if int(f.get("owner", -1)) != 0:
+                other = int(f["from"])
+                break
+        if other is not None:
+            pc2 = rp.pieces[0]
+            pc2.pos = other - 1
+            pv2 = g.preview_move(pc2, 1)
+            check("规则5b: 他色飞行起点不触发飞行",
+                  "flight" not in pv2.get("events", []), (other, pv2.get("events")))
 
 
 # ───────────────────────── 规则 6 ─────────────────────────
@@ -276,7 +302,7 @@ def test_capture_rules():
         check("规则6c: 跳跃后敌方仍在原格", ep.pos == mid, ep.pos)
 
     # 6b 飞行途中撞
-    src, mid = find_flight_with_mid()
+    src, mid = find_flight_with_mid(0)
     check("规则6b: 飞行路径带 mid 数据 (途中格)", src is not None, (src, mid))
     if src is not None:
         g = mk(4, seed=3)

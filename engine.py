@@ -46,7 +46,7 @@ TILES = BOARD["tiles"]
 TILE_COUNT = len(TILES)
 HOME_ENTRANCES = BOARD["homeEntrances"]
 HOME_PATHS = BOARD["homePaths"]
-START_CELLS = BOARD["starts"]          # 各色起飞点格 (红15/蓝41/黄28/绿2)
+START_CELLS = BOARD["starts"]          # 各色起飞点格 (红28/蓝15/黄2/绿41, 参考图配色)
 HOME_STRETCH_FIRST = min(p[1] for p in HOME_PATHS)
 FINISHED_POS = {o: p[-1] for o, p in enumerate(HOME_PATHS)}  # 各色终点位置
 
