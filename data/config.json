@@ -2,7 +2,7 @@
   "meta": {
     "name": "飞行棋",
     "version": "1.0",
-    "boardVersion": "2.1",
+    "boardVersion": "2.2",
     "updatedAt": "2026-11-11",
     "ruleSpec": "官方 10 条规则 (2026-11-10 版, 2026-11-11 审计修订)"
   },
