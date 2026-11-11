@@ -2,9 +2,9 @@
   "meta": {
     "name": "飞行棋",
     "version": "1.0",
-    "boardVersion": "1.0",
-    "updatedAt": "2026-11-10",
-    "ruleSpec": "官方 10 条规则 (2026-11-10 版)"
+    "boardVersion": "2.1",
+    "updatedAt": "2026-11-11",
+    "ruleSpec": "官方 10 条规则 (2026-11-10 版, 2026-11-11 审计修订)"
   },
   "game": {
     "playerCount": 4,
@@ -29,7 +29,8 @@
     "captureDuringFlight": true,
     "captureDuringJump": false,
     "minPlayers": 2,
-    "maxPlayers": 4
+    "maxPlayers": 4,
+    "maxBonusRolls": 3
   },
   "bonus": {
     "startBonusPoints": 2,

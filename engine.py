@@ -81,6 +81,8 @@ LANE_COUNT = len(HOME_PATHS)
 PIECES_PER_PLAYER = GAME_CFG["piecesPerPlayer"]
 DICE_SIDES = GAME_CFG["diceSides"]
 MAX_SIXES = GAME_CFG["maxConsecutiveSixes"]
+# 规则 8: 掷 6 奖励多一次掷骰, 最多 3 次 (独立于"连续几个 6"的处罚阈值)
+MAX_BONUS_ROLLS = int(GAME_CFG.get("maxBonusRolls", MAX_SIXES))
 RANDOM_FIRST = bool(GAME_CFG.get("randomFirstPlayer", True))
 STACKING = bool(GAME_CFG.get("stacking", True))
 
@@ -157,6 +159,8 @@ class FlightChessGame:
         self.finished = False
         self.winner: Optional[int] = None
         self.consecutive_sixes = 0
+        self.six_bonus_rolls = 0   # 本轮已发放的 6 奖励次数 (规则 8, 上限 3)
+        self.max_bonus = MAX_BONUS_ROLLS
         self.pending_roll: Optional[int] = None
         self.pending_piece: Optional[int] = None
         self.last_roll: Optional[int] = None
@@ -446,14 +450,18 @@ class FlightChessGame:
 
         if value == 6:
             self.consecutive_sixes += 1
-            if self.consecutive_sixes >= MAX_SIXES and GAME_CFG.get("threeSixesPenalty"):
+            # 奖励额度已用完还掷出 6 -> 若开启处罚则本回合作废
+            if (self.six_bonus_rolls >= MAX_BONUS_ROLLS
+                    and GAME_CFG.get("threeSixesPenalty")):
                 self.consecutive_sixes = 0
+                self.six_bonus_rolls = 0
                 self.pending_roll = None
                 self._add_log(player.id, f"连续 {MAX_SIXES} 个 6，{player.name} 本回合作废并跳过", "penalty")
                 self._advance_turn()
                 return self.state()
         else:
             self.consecutive_sixes = 0
+            self.six_bonus_rolls = 0
 
         self.pending_roll = value
 
@@ -561,10 +569,13 @@ class FlightChessGame:
                       + (f" (叠子 {len(group)} 枚)" if len(group) > 1 else ""),
                       "move", {"pieceId": piece.id, "from": from_pos, "to": to_pos})
 
-        # 规则 8: 掷 6 奖励额外一次掷骰 (先完成移动, 再重新掷骰), 最多奖励 3 次
-        # consecutive_sixes 已自增, 故奖励次数 = consecutive_sixes - 1
-        extra_turn = (roll == 6 and GAME_CFG.get("sixRollsAgain", True)
-                      and self.consecutive_sixes < MAX_SIXES)
+        # 规则 8: 掷 6 奖励额外一次掷骰 —— 先完成移动, 再重新掷骰, 最多奖励 3 次
+        # six_bonus_rolls 记录本轮已发放的奖励次数; 满 3 次后不再奖励
+        extra_turn = False
+        if roll == 6 and GAME_CFG.get("sixRollsAgain", True):
+            if self.six_bonus_rolls < MAX_BONUS_ROLLS:
+                self.six_bonus_rolls += 1
+                extra_turn = True
         self.pending_roll = None
         self.pending_piece = None
 
@@ -584,6 +595,8 @@ class FlightChessGame:
 
     def _advance_turn(self) -> None:
         """按座位顺时针推进到下一位未结束的玩家 (规则 9)。"""
+        self.consecutive_sixes = 0
+        self.six_bonus_rolls = 0
         n = len(self.players)
         idx = self.order.index(self.turn)
         for _ in range(n):
@@ -627,6 +640,8 @@ class FlightChessGame:
             "lastRoll": self.last_roll,
             "pendingRoll": self.pending_roll,
             "consecutiveSixes": self.consecutive_sixes,
+            "sixBonusRolls": self.six_bonus_rolls,
+            "maxBonusRolls": MAX_BONUS_ROLLS,
             "firstPlayer": self.first_seat,
             "turnOrder": self.order,
             "players": players,

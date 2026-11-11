@@ -46,3 +46,6 @@ Thumbs.db
 # 分析中间产物 (参考图衍生)
 docs/ref_grid.png
 docs/ref_center.png
+
+# 参考图分析中间产物 (40MB 派生图, 不入库; 原始参考图见 docs/ref_board_view.jpg)
+docs/ref/
