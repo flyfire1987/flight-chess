@@ -28,7 +28,7 @@
 | 6c | 跳跃途中经过敌方不能撞回 | `_resolve_chain()` 跳跃分支不判撞 |
 | 6d | 叠子参与撞与被撞视为一颗 | 敌方整叠一起回基地 |
 | 7 | 己方棋子落同格 → 叠在一起共同行动 | `_stack_at()` 整叠同步移动 |
-| 8 | 掷 6 奖励一次，最多 3 次，先行棋再掷 | `extra_turn` 判定，`consecutive_sixes < 3` |
+| 8 | 掷 6 奖励一次，最多 3 次，先行棋再掷 | `six_bonus_rolls` 独立计数，`game.maxBonusRolls = 3`；奖励额度在换手时复位 |
 | 9 | 随机选红色先手，其余按座位顺时针 | `first_seat` 随机，先手 `color_index = 0`（红） |
 | 10 | 一方 4 枚全部到终点即结束 | `all(pc.finished ...)` → `finished` + `winner` |
 
@@ -54,13 +54,13 @@
 
 | 文件 | 覆盖 |
 |---|---|
-| `test_rules.py` | **54 条断言**，逐条覆盖 10 条规则（路过不撞/落点撞/飞行撞/跳跃不撞/叠子/掷6顺序/随机先手）|
+| `test_rules.py` | **41 条断言**，逐条覆盖 10 条规则（2~4人/盖轮/精确到达与回退/同色跳跃/飞行连锁/路过不撞/落点撞/飞行撞/跳跃不撞/叠子/掷6奖励顺序/随机先手/终局）|
 | `test_ai_auto.py` | 单人模式真人 10 步 + AI 接管 30 次，验 AI 不卡死 |
 | `test_fullgame.py` | 全流程对局，打到分出胜负 |
 | `test_multiplayer.py` | 联机 200 步交互 + 三类非法请求拒绝 |
 
 ```bash
-python3 test_rules.py      # 54 PASS / 0 FAIL
+python3 test_rules.py      # 41 PASS / 0 FAIL
 ```
 
 > ⚠️ 改完 `engine.py` 必须先 `systemctl restart flight-chess`，否则测的是旧代码。
@@ -175,6 +175,24 @@ python3 test_multiplayer.py   # 联机双客户端流程
 > ⚠️ 三组测试全部通过 **HTTP** 打 `127.0.0.1:3500`，不是 `import engine`。
 > **改完 `engine.py` 必须先 `systemctl restart flight-chess.service` 再跑测试**，否则测的是旧代码。
 > 排查手法：`stat -c '%y' engine.py` 对比 `systemctl show flight-chess.service -p ActiveEnterTimestamp`。
+
+### 2026-11-11 规则审计结果
+
+对官方 10 条规则逐条审计（`test_rules.py`，41 项断言全部通过），并修复 1 处真实偏差：
+
+| 项 | 审计前 | 审计后 |
+|---|---|---|
+| 规则 8 掷 6 奖励次数 | 只奖励 **2 次**（与 `maxConsecutiveSixes` 耦合） | **最多 3 次**（独立 `six_bonus_rolls` 计数） |
+
+其余 9 条规则实现与官方规则一致，其中此前**未实现/未验证**的精细撞子规则已全部落地并有断言覆盖：
+
+| 规则 | 断言覆盖 |
+|---|---|
+| 6a 普通移动路过敌方 **不撞** | ✅ 落点判定 + 敌方位置不变 |
+| 6a 落到同一格 **撞回** | ✅ 被撞棋子回基地 |
+| 6b **飞行途中**经过敌方可撞 | ✅ `flightPaths.mid` 扫描 |
+| 6c **跳跃途中**经过敌方不撞 | ✅ 跳跃分支不判撞 |
+| 6d 叠子撞与被撞按 **一颗棋子** | ✅ 敌方整叠回基地 |
 
 ### 2026-11-10 v2 验收基线
 
