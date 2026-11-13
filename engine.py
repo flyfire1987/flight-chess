@@ -85,6 +85,12 @@ MAX_SIXES = GAME_CFG["maxConsecutiveSixes"]
 MAX_BONUS_ROLLS = int(GAME_CFG.get("maxBonusRolls", MAX_SIXES))
 RANDOM_FIRST = bool(GAME_CFG.get("randomFirstPlayer", True))
 STACKING = bool(GAME_CFG.get("stacking", True))
+# 规则 6 撞子开关 (此前行为写死, 现由 config.json 驱动, 默认值 = 官方规则)
+CAPTURE_ON_SAME_CELL_ONLY = bool(GAME_CFG.get("captureOnSameCellOnly", True))
+CAPTURE_DURING_FLIGHT = bool(GAME_CFG.get("captureDuringFlight", True))
+CAPTURE_DURING_JUMP = bool(GAME_CFG.get("captureDuringJump", False))
+# 规则 4 精确抵达终点
+MUST_ENTER_HOME_EXACT = bool(GAME_CFG.get("mustEnterHomeOnExactRoll", True))
 
 
 class GameError(Exception):
@@ -238,6 +244,7 @@ class FlightChessGame:
 
         events: List[str] = []
         captured: List[int] = []
+        passed: List[int] = []
         color = piece.color
 
         # 1) 基地待起飞: 规则 3 —— 掷出 5 或 6 才能起飞
@@ -257,11 +264,19 @@ class FlightChessGame:
             final_pos = self._advance_home_stretch(piece, roll, events)
         else:
             # 2b) 在公共跑道内
-            final_pos = self._advance_ring(piece, roll, events, captured)
+            final_pos = self._advance_ring(piece, roll, events, captured, passed)
 
         if final_pos is None:
             return {"ok": False, "reason": "invalid", "msg": "无法移动",
                     "from": piece.pos, "to": piece.pos}
+
+        # 规则 6a 变体: 关闭 captureOnSameCellOnly 时, 普通行棋路过敌方也撞回
+        if not CAPTURE_ON_SAME_CELL_ONLY:
+            for cell in passed:
+                for other in self._pieces_at(cell, exclude=piece.id):
+                    if other.owner != piece.owner:
+                        captured.append(other.id)
+                        events.append("capture")
 
         # 3) 落点撞机 (规则 6a: 必须走到同一格才能撞回; 终点跑道内不撞)
         path = self._home_path(color)
@@ -285,7 +300,7 @@ class FlightChessGame:
             "to": final_pos,
             "homeStep": (final_pos - path[1] + 1) if path[1] <= final_pos <= path[-1] else 0,
             "events": events,
-            "captured": captured,
+            "captured": list(dict.fromkeys(captured)),
             "arrivesFinish": final_pos == FINISHED_POS[color],
             "stackSize": len(group),
         }
@@ -305,7 +320,7 @@ class FlightChessGame:
         last_cell = len(path) - 1
         new_idx = idx + roll
         if new_idx > last_cell:
-            if GAME_CFG.get("bounceOnOvershoot", True):
+            if MUST_ENTER_HOME_EXACT and GAME_CFG.get("bounceOnOvershoot", True):
                 over = new_idx - last_cell
                 new_idx = last_cell - over
                 if new_idx < 1:
@@ -327,6 +342,8 @@ class FlightChessGame:
         if rem == last:
             return FINISHED_POS[color]
         if rem > last:
+            if not MUST_ENTER_HOME_EXACT:
+                return FINISHED_POS[color]
             over = rem - last
             idx = last - over
             if idx < 1:
@@ -353,29 +370,45 @@ class FlightChessGame:
             dest = FLIGHT_TO[src]
             events.append("flight")
             # 规则 6b: 飞行途中经过敌方棋子可以撞回
-            for mid in FLIGHT_MID.get(src, []):
+            mids = FLIGHT_MID.get(src, []) if CAPTURE_DURING_FLIGHT else []
+            for mid in mids:
                 for other in self._pieces_at(mid, exclude=piece.id):
                     if other.owner != owner:
                         captured.append(other.id)
                         events.append("capture")
             return dest
 
+        def do_jump(src: int) -> int:
+            # 规则 5a: 跳到前方下一个同色格
+            nxt = NEXT_SAME.get(src)
+            if nxt is None:
+                return src
+            events.append("jump")
+            # 规则 6c: 跳跃途中经过敌方棋子不能撞回 (除非显式开启)
+            if CAPTURE_DURING_JUMP:
+                step = (nxt - src) % TILE_COUNT
+                for k in range(1, step):
+                    for other in self._pieces_at((src + k) % TILE_COUNT,
+                                                exclude=piece.id):
+                        if other.owner != owner:
+                            captured.append(other.id)
+                            events.append("capture")
+            return nxt
+
+        # 规则 6a: 落到敌方所在格 -> 先撞回 (即使随后触发跳跃/飞行)
+        for other in self._pieces_at(cur, exclude=piece.id):
+            if other.owner != owner:
+                captured.append(other.id)
+                events.append("capture")
+
         # 初始落点: 是飞行起点则先飞, 否则直接跳一格 (规则 5a 只跳一次)
         if cur in FLIGHT_TO:
             cur = do_flight(cur)
             if cur == entrance:
                 return cur
-            nxt = NEXT_SAME.get(cur)
-            if nxt is None:
-                return cur
-            events.append("jump")
-            cur = nxt
+            cur = do_jump(cur)
         else:
-            nxt = NEXT_SAME.get(cur)
-            if nxt is None:
-                return cur
-            events.append("jump")
-            cur = nxt
+            cur = do_jump(cur)
 
         # 连锁: 跳跃的终点是飞行起点 -> 再飞一次, 飞完继续向前一个同色格作跳跃
         seen = set()
@@ -386,16 +419,13 @@ class FlightChessGame:
             cur = do_flight(cur)
             if cur == entrance:
                 return cur
-            nxt = NEXT_SAME.get(cur)
-            if nxt is None:
-                return cur
-            events.append("jump")
-            cur = nxt
+            cur = do_jump(cur)
 
         return cur
 
     def _advance_ring(self, piece: Piece, roll: int,
-                      events: List[str], captured: List[int]) -> Optional[int]:
+                      events: List[str], captured: List[int],
+                      passed: Optional[List[int]] = None) -> Optional[int]:
         """
         在公共跑道 (0..51) 内前进, 处理跳跃 / 飞行 / 进入终点跑道。
         规则 6a: 普通行棋路过敌方棋子不撞, 只有落到同一格才撞。
@@ -429,6 +459,9 @@ class FlightChessGame:
                 if cur >= TILE_COUNT:
                     # 连锁已进入终点道
                     return cur
+            elif passed is not None:
+                # 规则 6a: 普通行棋路过敌方棋子, 默认不撞回
+                passed.append(cur)
 
         return cur
 

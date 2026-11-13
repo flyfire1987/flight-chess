@@ -11,9 +11,10 @@
 - 配置与棋盘数据：`data/`（JSON，与代码彻底分离）
 - 存储：内存单局态（进程重启清空）
 
-## 📋 官方规则实现 (2026-11-10 版)
+## 📋 官方规则实现 (2026-11-13 复核)
 
 引擎已按官方 10 条规则重写，`data/board.json` + `data/config.json` 驱动，前后端共用同一份数据。
+撞子相关的三个开关此前在 `config.json` 里声明但引擎**并未读取**（行为写死），现已全部接入。
 
 | # | 规则 | 实现 |
 |---|---|---|
@@ -23,10 +24,10 @@
 | 4 | 精确抵达终点，超出回退 | `_advance_home_stretch()` / `_enter_home()`，超额按 `bounce` 事件回退 |
 | 5a | 落在同色格 → 跳到前方下一个同色格 | `board.json > nextSame`（28 条），**只跳一次** |
 | 5b | 落在飞行起点 → 沿红箭头飞向对面，飞后再继续跳 | `board.json > flightMap` / `flightPaths` |
-| 6a | 普通行棋路过敌方不撞，落到同一格才撞 | `_advance_ring()` 只在落点判撞 |
-| 6b | 飞行途中经过敌方可以撞回 | `_resolve_chain()` 扫 `flightPaths.mid` |
-| 6c | 跳跃途中经过敌方不能撞回 | `_resolve_chain()` 跳跃分支不判撞 |
-| 6d | 叠子参与撞与被撞视为一颗 | 敌方整叠一起回基地 |
+| 6a | 普通行棋路过敌方不撞，落到同一格才撞 | `_advance_ring()` 收集 `passed[]` 路过格但默认不判撞；落点判撞。开关 `captureOnSameCellOnly` |
+| 6b | 飞行途中经过敌方可以撞回 | `_resolve_chain()` 扫 `flightPaths.mid`。开关 `captureDuringFlight` |
+| 6c | 跳跃途中经过敌方不能撞回 | `do_jump()` 不判撞。开关 `captureDuringJump`（默认关 = 官方规则） |
+| 6d | 叠子参与撞与被撞视为一颗 | 敌方整叠一起回基地；我方叠子整叠同步移动 |
 | 7 | 己方棋子落同格 → 叠在一起共同行动 | `_stack_at()` 整叠同步移动 |
 | 8 | 掷 6 奖励一次，最多 3 次，先行棋再掷 | `six_bonus_rolls` 独立计数，`game.maxBonusRolls = 3`；奖励额度在换手时复位 |
 | 9 | 随机选红色先手，其余按座位顺时针 | `first_seat` 随机，先手 `color_index = 0`（红） |
@@ -79,13 +80,13 @@
 
 | 文件 | 覆盖 |
 |---|---|
-| `test_rules.py` | **44 条断言**，逐条覆盖 10 条规则（2~4人/盖轮/精确到达与回退/同色跳跃/飞行连锁/他色飞行起点不触发飞行/路过不撞/落点撞/飞行撞/跳跃不撞/叠子/掷6奖励顺序/随机先手/终局）|
+| `test_rules.py` | **56 条断言** + **1248 组差分测试**，逐条覆盖 10 条规则（2~4人/盖轮/精确到达与回退/同色跳跃/飞行连锁/跳跃终点为飞行起点/路过不撞/落点撞/飞行撞/跳跃不撞/叠子共同行动/叠子被撞整叠回基地/掷6奖励顺序与封顶/随机先手顺时针/终局）|
 | `test_ai_auto.py` | 单人模式真人 10 步 + AI 接管 30 次，验 AI 不卡死 |
 | `test_fullgame.py` | 全流程对局，打到分出胜负 |
 | `test_multiplayer.py` | 联机 200 步交互 + 三类非法请求拒绝 |
 
 ```bash
-python3 test_rules.py      # 44 PASS / 0 FAIL
+python3 test_rules.py      # 56 PASS / 0 FAIL (含 1248 组差分测试)
 ```
 
 > ⚠️ 改完 `engine.py` 必须先 `systemctl restart flight-chess`，否则测的是旧代码。
@@ -201,15 +202,20 @@ python3 test_multiplayer.py   # 联机双客户端流程
 > **改完 `engine.py` 必须先 `systemctl restart flight-chess.service` 再跑测试**，否则测的是旧代码。
 > 排查手法：`stat -c '%y' engine.py` 对比 `systemctl show flight-chess.service -p ActiveEnterTimestamp`。
 
-### 2026-11-11 规则审计结果
+### 2026-11-13 规则复核结果
 
-对官方 10 条规则逐条审计（`test_rules.py`，41 项断言全部通过），并修复 1 处真实偏差：
+对官方 10 条规则重新逐条审计（`test_rules.py`，**56 项断言全部通过**），并修复以下问题：
 
-| 项 | 审计前 | 审计后 |
+| 项 | 复核前 | 复核后 |
 |---|---|---|
-| 规则 8 掷 6 奖励次数 | 只奖励 **2 次**（与 `maxConsecutiveSixes` 耦合） | **最多 3 次**（独立 `six_bonus_rolls` 计数） |
+| 规则 6 三个撞子开关 | `config.json` 声明了 `captureOnSameCellOnly` / `captureDuringFlight` / `captureDuringJump`，但引擎**完全没读**，行为写死 | 全部接入引擎，默认值 = 官方规则 |
+| 规则 6a 落点撞子时机 | 落点判撞发生在跳跃/飞行连锁**之后**，若连锁改变落点则漏撞 | 在连锁**之前**先判落点撞子，撞子不再丢失 |
+| 规则 4 精确抵达 | `mustEnterHomeOnExactRoll` 声明但未生效 | 接入 `_enter_home()` / `_advance_home_stretch()` |
+| 规则 5b 跳跃中撞子 | 无开关位 | 新增 `captureDuringJump`（默认关 = 官方规则） |
 
-其余 9 条规则实现与官方规则一致，其中此前**未实现/未验证**的精细撞子规则已全部落地并有断言覆盖：
+同时新增**独立参考实现差分测试**：用另一份按规则 4/5 文字直接实现的函数，
+在 **52 格 × 6 点 × 4 色 = 1248 组**全部组合上对比引擎 `preview_move()` 的落点，
+确保引擎没有偏离规则文字。
 
 | 规则 | 断言覆盖 |
 |---|---|
